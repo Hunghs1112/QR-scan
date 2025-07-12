@@ -1,10 +1,9 @@
 import { AppState, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useRef, useState } from 'react'
 import { launchImageLibrary } from 'react-native-image-picker';
-import { decodeQR } from './Encoding';
-import { scanFromPath } from '../modules/lib-scan-image-code-bank/src';
 import { Camera, useCameraDevice, useCameraFormat, useCodeScanner } from 'react-native-vision-camera';
-import { scanFromPathIOS } from 'react-native-lib-scan-image-code-bank/src/NativeLibScanImageCodeBank';
+import { decodeQR } from './Encoding';
+import { scanFromPath, multiply } from 'react-native-lib-scan-image-code-bank';
 
 type Props = {}
 
@@ -17,6 +16,10 @@ const App = (props: Props) => {
     const [isScanning, setIsScanning] = useState<boolean>(true); // Trạng thái quét mã
     const [light, setLight] = useState<boolean>(false);
 
+
+
+    // const result = multiply(4, 3);
+    // console.log("multiplys", result);
 
     const [accountInfo, setAccountInfo] = useState<{
         bankCode: string;

@@ -1,12 +1,20 @@
 {
   "name": "react-native-lib-scan-image-code-bank",
   "version": "0.0.0",
-  "description": "image-scan",
+  "description": "scan code bank",
   "main": "src/index",
   "codegenConfig": {
     "name": "LibScanImageCodeBankSpec",
     "type": "modules",
-    "jsSrcsDir": "src"
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.libscanimagecodebank"
+    },
+    "ios": {
+      "modulesScanCode": {
+        "LibScanImageCodeBank": "LibScanImageCodeBank"
+      }
+    }
   },
   "author": " <> ()",
   "license": "UNLICENSED",
