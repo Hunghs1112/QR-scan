@@ -2,9 +2,24 @@ import { AppState, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, V
 import React, { useRef, useState } from 'react'
 import { launchImageLibrary } from 'react-native-image-picker';
 import { decodeQR } from './Encoding';
-import { scanFromPath } from '../modules/lib-scan-image-code-bank/src';
-import { Camera, useCameraDevice, useCameraFormat, useCodeScanner } from 'react-native-vision-camera';
+import { scanFromPath } from 'react-native-lib-scan-image-code-bank';
 import { scanFromPathIOS } from 'react-native-lib-scan-image-code-bank/src/NativeLibScanImageCodeBank';
+import { Camera, useCameraDevice, useCameraFormat, useCodeScanner } from 'react-native-vision-camera';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+// Define the navigation stack param list (consistent with Navigation.tsx)
+type RootStackParamList = {
+  Home: undefined;
+  Two: undefined;
+  One: undefined;
+  three: { bankCode: string; accountNumber: string; recipientName: string };
+  QRPage: undefined;
+  five: { accountNumber: string; transferContent: string; amount: string; amountText: string; recipientAccountNumber: string; recipientName: string; bankCode: string; bankName: string };
+};
+
+// Define the navigation prop type
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 type Props = {}
 
@@ -17,16 +32,7 @@ const App = (props: Props) => {
     const [isScanning, setIsScanning] = useState<boolean>(true); // Trạng thái quét mã
     const [light, setLight] = useState<boolean>(false);
 
-
-    const [accountInfo, setAccountInfo] = useState<{
-        bankCode: string;
-        bankName: string;
-        accountNumber: string;
-        merchantName: string;
-        amount: string;
-        ownerName: string;
-    } | null>(null);
-
+    const navigation = useNavigation<NavigationProp>();
 
     const format = useCameraFormat(device, [
         { videoStabilizationMode: 'auto' },
@@ -65,7 +71,11 @@ const App = (props: Props) => {
                         return [];
                     }
 
-                    await fetchDataFromQR(parsed);
+                    navigation.navigate('three', {
+                        bankCode: parsed.bankCode || '',
+                        accountNumber: parsed.accountNumber || '',
+                        recipientName: '',
+                    });
 
                     console.log("✅ Mã QR hợp lệ");
                     console.log("🔢 BIN:", parsed.bin);
@@ -92,7 +102,11 @@ const App = (props: Props) => {
                             return [];
                         }
 
-                        await fetchDataFromQR(parsed);
+                        navigation.navigate('three', {
+                            bankCode: parsed.bankCode || '',
+                            accountNumber: parsed.accountNumber || '',
+                            recipientName: '',
+                        });
 
                         console.log("✅ Mã QR hợp lệ");
                         console.log("🔢 BIN:", parsed.bin);
@@ -120,7 +134,6 @@ const App = (props: Props) => {
             if (!isScanning) { return; } // Nếu không ở trạng thái quét, bỏ qua
             const firstCode = codes[0]; // Lấy mã đầu tiên trong danh sách
 
-
             const codeValue = firstCode?.value || firstCode?.data; // Thường chứa giá trị thực của mã
             if (codeValue) {
                 try {
@@ -138,55 +151,20 @@ const App = (props: Props) => {
                     console.log("👤 Tên người nhận:", parsed.merchantName);
                     console.log("💰 Số tiền:", parsed.amount ? parsed.amount + " VND" : "Không có");
 
-
-                    await fetchDataFromQR(parsed); // bạn tự định nghĩa hàm này
-                    // setAccountInfo(response.data); // cập nhật UI
-                    //gọi api ở đây
+                    navigation.navigate('three', {
+                        bankCode: parsed.bankCode || '',
+                        accountNumber: parsed.accountNumber || '',
+                        recipientName: '',
+                    });
 
                 } catch (error) {
                     // showMessage('Mã QR không hợp lệ');
                     setIsScanning(true);
                 }
             }
-
-
         },
     });
 
-    const fetchDataFromQR = async (parsed: any) => {
-        let ownerName = "Không tìm thấy";
-
-        const response = await fetch("https://api.banklookup.net", {
-            method: "POST",
-            headers: {
-                "x-api-key": "ed351838-70fa-4f85-bb51-56a108f43a4fkey",
-                "x-api-secret": "905e3313-a086-426e-8274-7bc999415d0asecret",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                bank: parsed.bankCode,
-                account: parsed.accountNumber,
-            }),
-        });
-
-        console.log("responseresponseresponseresponse", response);
-
-
-        const json = await response.json();
-        if (json.success && json.data?.ownerName) {
-            ownerName = json.data.ownerName;
-        }
-
-        setAccountInfo({
-            bankCode: parsed.bankCode || "",
-            bankName: parsed.bankName ?? "Không rõ",
-            accountNumber: parsed.accountNumber || "",
-            merchantName: parsed.merchantName ?? "",
-            amount: parsed.amount ?? "",
-            ownerName,
-        });
-
-    }
     return (
         <SafeAreaView style={styles.container}>
             {device && checkCamera && (
@@ -223,23 +201,8 @@ const App = (props: Props) => {
                     </TouchableOpacity>
                 </View>
             )}
-
-            {accountInfo && (
-                <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>
-                        Ngân hàng: {accountInfo.bankName} ({accountInfo.bankCode})
-                    </Text>
-                    <Text style={styles.infoText}>
-                        Số tài khoản: {accountInfo.accountNumber}
-                    </Text>
-                    <Text style={styles.infoText}>
-                        Chủ tài khoản: {accountInfo.ownerName}
-                    </Text>
-                </View>
-            )}
         </SafeAreaView>
     );
-
 };
 
 export default App;
@@ -307,7 +270,6 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 15,
     },
-
 });
 
 export const optionsImagerLIB: any = {

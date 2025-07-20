@@ -95,19 +95,22 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+            release {
+        storeFile file(MYAPP_RELEASE_STORE_FILE)
+      storePassword MYAPP_RELEASE_STORE_PASSWORD
+      keyAlias MYAPP_RELEASE_KEY_ALIAS
+      keyPassword MYAPP_RELEASE_KEY_PASSWORD
+    }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
-        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            // signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-        }
+       release {
+    signingConfig signingConfigs.debug
+    minifyEnabled enableProguardInReleaseBuilds
+    proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+}
     }
         packagingOptions {
             pickFirst "lib/armeabi-v7a/libc++_shared.so"
@@ -123,7 +126,7 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
     implementation 'com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1'
-
+    implementation project(':react-native-push-notification')
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
