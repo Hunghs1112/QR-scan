@@ -1,32 +1,27 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
-type Bank = {
+export interface Bank {
   id: string;
   name: string;
   code: string;
-  bin: number;
   short_name: string;
-  logo_url: string;
-  icon_url: string;
-  swift_code: string | null;
-  lookup_supported: number;
-};
+  icon_url?: string;
+}
 
 interface BankContextType {
   banks: Bank[];
-  setBanks: (banks: Bank[]) => void;
   selectedBank: Bank | null;
   setSelectedBank: (bank: Bank | null) => void;
 }
 
 const BankContext = createContext<BankContextType | undefined>(undefined);
 
-export const BankProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const BankProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
 
   return (
-    <BankContext.Provider value={{ banks, setBanks, selectedBank, setSelectedBank }}>
+    <BankContext.Provider value={{ banks, selectedBank, setSelectedBank }}>
       {children}
     </BankContext.Provider>
   );

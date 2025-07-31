@@ -1,6 +1,8 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
+apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -85,8 +87,6 @@ android {
         versionCode 1
         versionName "1.0"
         missingDimensionStrategy 'react-native-camera', 'general'
-        
-
     }
     signingConfigs {
         debug {
@@ -95,30 +95,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-            release {
-        storeFile file(MYAPP_RELEASE_STORE_FILE)
-      storePassword MYAPP_RELEASE_STORE_PASSWORD
-      keyAlias MYAPP_RELEASE_KEY_ALIAS
-      keyPassword MYAPP_RELEASE_KEY_PASSWORD
-    }
+        release {
+            storeFile file(MYAPP_RELEASE_STORE_FILE)
+            storePassword MYAPP_RELEASE_STORE_PASSWORD
+            keyAlias MYAPP_RELEASE_KEY_ALIAS
+            keyPassword MYAPP_RELEASE_KEY_PASSWORD
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
-       release {
-    signingConfig signingConfigs.debug
-    minifyEnabled enableProguardInReleaseBuilds
-    proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-}
-    }
-        packagingOptions {
-            pickFirst "lib/armeabi-v7a/libc++_shared.so"
-            pickFirst "lib/arm64-v8a/libc++_shared.so"
-            pickFirst "lib/x86/libc++_shared.so"
-            pickFirst "lib/x86_64/libc++_shared.so"
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
-
+    }
+    packagingOptions {
+        pickFirst "lib/armeabi-v7a/libc++_shared.so"
+        pickFirst "lib/arm64-v8a/libc++_shared.so"
+        pickFirst "lib/x86/libc++_shared.so"
+        pickFirst "lib/x86_64/libc++_shared.so"
+    }
 }
 
 dependencies {
@@ -127,6 +126,14 @@ dependencies {
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
     implementation 'com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1'
     implementation project(':react-native-push-notification')
+    implementation 'com.google.firebase:firebase-analytics:17.3.0'
+    implementation 'com.google.firebase:firebase-messaging:23.1.2'
+    implementation 'com.facebook.fresco:animated-gif:3.6.0'
+    // Loại bỏ firebase-iid để tránh xung đột
+    configurations {
+        all*.exclude module: 'firebase-iid'
+    }
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -1,77 +1,108 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NotifService from './NotifService';
-import { useAuth } from './Context/AuthContext';
-import { checkTransactions } from './apiService';
+import { Platform, PermissionsAndroid } from 'react-native';
+import PushNotification, { Importance } from 'react-native-push-notification';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 
 const NotificationHandler: React.FC = () => {
-  const { username, isAuthenticated } = useAuth();
   const [lastTransactionTime, setLastTransactionTime] = useState<string | null>(null);
 
-  // Load last transaction time from AsyncStorage
   useEffect(() => {
     const loadLastTransactionTime = async () => {
       try {
         const storedTime = await AsyncStorage.getItem('lastTransactionTime');
         if (storedTime) {
           setLastTransactionTime(storedTime);
-          console.log('Loaded lastTransactionTime:', storedTime);
         }
       } catch (error) {
-        console.error('Error loading last transaction time:', error);
       }
     };
     loadLastTransactionTime();
   }, []);
 
-  // Poll for new transactions every 30 seconds
-  const pollTransactions = useCallback(async () => {
-    if (!username || !isAuthenticated) {
-      console.log('Skipping poll: User not authenticated or username missing');
-      return;
-    }
-    try {
-      const transactions = await checkTransactions(username, lastTransactionTime);
-      console.log('Fetched new transactions:', transactions);
-      if (!Array.isArray(transactions)) {
-        console.warn('Transactions is not an array:', transactions);
+  useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    const createChannels = async () => {
+      if (Platform.OS !== 'android') {
         return;
       }
-      if (transactions.length > 0) {
-        transactions.forEach((transaction: { timestamp: string; amount: number; recipient_name: string; recipient_account_number: string; account_number: string }) => {
-          // Format account number (e.g., 11111111 -> 11xxx1111)
-          const maskedAccount = `${transaction.account_number.slice(0, 2)}xxx${transaction.account_number.slice(-4)}`;
-          // Format amount with VND and + prefix
-          const formattedAmount = `+${transaction.amount.toLocaleString('vi-VN')}VND`;
-          // Format timestamp to DD/M/YY HH:MM (adjust to +07)
-          const date = new Date(transaction.timestamp);
-          const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear().toString().slice(-2)} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-          // Notification content
-          const message = `TK ${maskedAccount}: ${formattedAmount}\n${formattedDate} |ND:\n${transaction.recipient_name} chuyen tien`;
-          NotifService.sendLocalNotification('Nạp tiền thành công', message);
-          console.log('Notification sent for transaction:', transaction);
+
+      try {
+        PushNotification.getChannels((channels) => {
+          if (!channels.includes('transaction-channel')) {
+            PushNotification.createChannel(
+              {
+                channelId: 'transaction-channel',
+                channelName: 'Transaction Notifications',
+                channelDescription: 'Notifications for transaction updates',
+                importance: Importance.HIGH,
+                vibrate: true,
+                playSound: true,
+                soundName: 'default',
+                priority: 'high',
+              } as any,
+              () => {}
+            );
+          }
+
+          if (!channels.includes('remote-channel')) {
+            PushNotification.createChannel(
+              {
+                channelId: 'remote-channel',
+                channelName: 'Remote Notifications',
+                channelDescription: 'Notifications received from the server',
+                importance: Importance.HIGH,
+                vibrate: true,
+                playSound: true,
+                soundName: 'default',
+                priority: 'high',
+              } as any,
+              () => {}
+            );
+          }
         });
-        const latestTime = transactions[transactions.length - 1].timestamp;
-        setLastTransactionTime(latestTime);
-        await AsyncStorage.setItem('lastTransactionTime', latestTime);
-        console.log('Updated lastTransactionTime:', latestTime);
-      } else {
-        console.log('No new transactions');
+      } catch (error) {
       }
-    } catch (error) {
-      console.error('Error in pollTransactions:', error);
-    }
-  }, [username, isAuthenticated, lastTransactionTime]);
+    };
 
-  useEffect(() => {
-    if (username && isAuthenticated) {
-      const interval = setInterval(pollTransactions, 3000); // Poll every 30 seconds
-      pollTransactions(); // Initial poll
-      return () => clearInterval(interval); // Cleanup on unmount
-    }
-  }, [username, isAuthenticated, pollTransactions]);
+    PushNotification.configure({
+      onNotification: function (notification) {
+        notification.finish(PushNotificationIOS.FetchResult.NoData);
+      },
+      onAction: function (notification) {
+      },
+      onRegistrationError: function (err) {
+      },
+      permissions: {
+        alert: true,
+        badge: true,
+        sound: true,
+      },
+      popInitialNotification: true,
+      requestPermissions: false,
+    });
 
-  return null; // No UI
+    const setupNotifications = async () => {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        await createChannels();
+      }
+    };
+    setupNotifications();
+  }, []);
+
+  return null;
 };
 
 export default NotificationHandler;
