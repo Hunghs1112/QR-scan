@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   Image,
   TextInput,
   TouchableOpacity,
-  ImageBackground,
   TouchableWithoutFeedback,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,22 +18,7 @@ import { useThreeLogic } from './ThreeLogic';
 import BankSelectorModal from './BankSelectorModal';
 import Entypo from 'react-native-vector-icons/Entypo';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Keyboard } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-
-const backgroundImage = require('../screen/image/back3.jpg');
-
-type RootStackParamList = {
-  Main: undefined;
-  Payment: undefined;
-  Home: undefined;
-  Bank: undefined;
-  QRPage: undefined;
-  Confirm: undefined;
-  Bill: undefined;
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const Three: React.FC = () => {
   const {
@@ -57,36 +42,37 @@ const Three: React.FC = () => {
     formatVND,
   } = useThreeLogic();
 
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [svgXml, setSvgXml] = useState<string | null>(null);
+  const amountInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (selectedBank?.icon_url) {
-      fetch(selectedBank.icon_url)
-        .then((response) => response.text())
-        .then((data) => {
-          if (data.trim().startsWith('<svg')) {
-            setSvgXml(data);
-          } else {
-            setSvgXml(null);
-          }
-        })
-        .catch((error) => {
+    const fetchSvg = async () => {
+      try {
+        if (selectedBank?.icon_url) {
+          const response = await fetch(selectedBank.icon_url);
+          const data = await response.text();
+          setSvgXml(data.trim().startsWith('<svg') ? data : null);
+        } else {
           setSvgXml(null);
-        });
-    } else {
-      setSvgXml(null);
-    }
+        }
+      } catch {
+        setSvgXml(null);
+      }
+    };
+    fetchSvg();
   }, [selectedBank]);
+
+  const handleAmountSectionPress = () => amountInputRef.current?.focus();
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ImageBackground source={backgroundImage} style={styles.background}>
+        <View style={styles.background}>
           <View style={styles.upperContainer}>
             <View style={styles.headerSection}>
               <View style={styles.headerContainer}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+                <TouchableOpacity onPress={() => navigation.navigate('Payment')} style={styles.backIcon}>
                   <Entypo name="chevron-small-left" size={24} color="#275285" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Chuyển tiền tới số tài khoản</Text>
@@ -96,7 +82,7 @@ const Three: React.FC = () => {
             <Text style={styles.sectionTitle}>Nguồn chuyển tiền</Text>
             <View style={styles.sourceAccountBox}>
               <Text style={styles.accountText}>TÀI KHOẢN THANH TOÁN - {account_number || ''}</Text>
-              <Text style={styles.balanceText}>{balance !== undefined ? formatVND(balance) : '989,771 VND'} VND</Text>
+              <Text style={styles.balanceText}>{balance !== undefined ? formatVND(balance) : '0'} VND</Text>
               <Entypo name="chevron-small-down" size={24} color="#4e5db5" style={styles.dropdownIcon} />
             </View>
 
@@ -105,23 +91,21 @@ const Three: React.FC = () => {
               <View style={styles.bankSection}>
                 <View style={styles.bankIcon}>
                   {selectedBank?.icon_url && svgXml ? (
-                    <SvgXml xml={svgXml} width={32} height={32} style={styles.bankIcon} />
+                    <SvgXml xml={svgXml} width={32} height={32} />
                   ) : (
-                    <Image
-                      source={require('../screen/image/nh.png')}
-                      style={styles.bankIcon}
-                      resizeMode="contain"
-                    />
+                    <Image source={require('../screen/image/nh.png')} style={styles.bankIcon} resizeMode="contain" />
                   )}
                 </View>
                 <View style={styles.inputWrapper}>
                   <TouchableOpacity onPress={() => setIsModalVisible(true)} style={styles.bankSelector}>
                     <Text style={styles.bankText}>{selectedBank ? selectedBank.name : 'Ngân hàng'}</Text>
-                  </TouchableOpacity>
+  </TouchableOpacity>
                   <Entypo name="chevron-small-down" size={24} color="#4e5db5" style={styles.bankDropdownIcon} />
                 </View>
               </View>
-              <View style={styles.dashedLine}></View>
+
+              <View style={styles.dashedLine} />
+
               <View style={styles.accountInputSection}>
                 <View style={styles.inputWrapper}>
                   <TextInput
@@ -132,17 +116,14 @@ const Three: React.FC = () => {
                     placeholder="Số tài khoản"
                     placeholderTextColor="#999"
                   />
-                  <Image
-                    source={require('../screen/image/danhba.png')}
-                    style={styles.contactIcon}
-                    resizeMode="contain"
-                  />
+                  <Image source={require('../screen/image/danhba.png')} style={styles.contactIcon} resizeMode="contain" />
                 </View>
               </View>
             </View>
+
             {recipientName && (
               <View style={styles.recipientContainer}>
-                <View style={styles.dashedLine}></View>
+                <View style={styles.dashedLine} />
                 <View style={styles.recipientNameSection}>
                   <Text style={styles.recipientNameText}>{recipientName}</Text>
                   <TouchableOpacity style={styles.saveButton}>
@@ -155,14 +136,15 @@ const Three: React.FC = () => {
           </View>
 
           <View style={styles.lowerContainer}>
-            <View style={styles.amountSection}>
+            <TouchableOpacity style={styles.amountSection} onPress={handleAmountSectionPress} activeOpacity={0.7}>
               <TextInput
+                ref={amountInputRef}
                 style={styles.amountInput}
                 value={amount ? formatVND(amount) : ''}
                 onChangeText={handleAmountChange}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#999"
+                placeholderTextColor="#275285"
                 onFocus={() => setAmount('')}
               />
               <Text style={styles.vndText}>VND</Text>
@@ -171,7 +153,8 @@ const Three: React.FC = () => {
                   <MaterialIcons name="close" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
-            </View>
+            </TouchableOpacity>
+
             <View style={styles.contentInputContainer}>
               <Text style={styles.contentLabel}>Nội dung chuyển tiền</Text>
               <View style={styles.contentInputRow}>
@@ -180,7 +163,7 @@ const Three: React.FC = () => {
                     style={styles.contentInput}
                     value={transferContent}
                     onChangeText={setTransferContent}
-                    placeholder="NGUYEN QUANG HUY chuyen tien"
+                    placeholder=""
                     placeholderTextColor="#999"
                   />
                   <TouchableOpacity onPress={() => setTransferContent('')} style={styles.contentClearIconContainer}>
@@ -189,6 +172,7 @@ const Three: React.FC = () => {
                 </View>
               </View>
             </View>
+
             <View style={styles.buttonContainer}>
               <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Payment')}>
                 <Text style={styles.backButtonText}>Quay lại</Text>
@@ -198,6 +182,7 @@ const Three: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
+
           <BankSelectorModal
             visible={isModalVisible}
             onClose={() => setIsModalVisible(false)}
@@ -205,7 +190,7 @@ const Three: React.FC = () => {
             onSelectBank={setSelectedBank}
             loading={false}
           />
-        </ImageBackground>
+        </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );

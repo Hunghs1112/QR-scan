@@ -2,7 +2,7 @@ import React from "react";
 import { View, TouchableOpacity, Image, Text } from "react-native";
 import { styles } from "./styles";
 import { IMAGES } from "./constants";
-export const GridSection: React.FC = () => {
+export const GridSection: React.FC = React.memo(() => {
   return (
     <View style={styles.gridSectionContainer}>
       <View style={styles.gridSection}>
@@ -60,4 +60,4 @@ export const GridSection: React.FC = () => {
       </View>
     </View>
   );
-};
+});

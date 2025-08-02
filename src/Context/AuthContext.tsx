@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login } from '../utils/apiService';
 import NotifService from '../utils/NotifService';
@@ -24,43 +31,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [name, setname] = useState<string>('');
-  const [account_number, setAccountNumber] = useState<string | undefined>(undefined);
-  const [balance, setBalance] = useState<number | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [name, setname] = useState('');
+  const [account_number, setAccountNumber] = useState<string | undefined>();
+  const [balance, setBalance] = useState<number | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const registerPushToken = async () => {
+  const registerPushToken = async (authUsername: string) => {
     PushNotification.configure({
       onRegister: async (token) => {
-        if (!isAuthenticated) {
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
         await NotifService.sendTokenToServer(token.token, {
-          isAuthenticated,
-          username,
+          isAuthenticated: true,
+          username: authUsername,
         });
       },
       onRegistrationError: (err) => {
+        console.error('Push token registration error:', err);
       },
-      permissions: {
-        alert: true,
-        badge: true,
-        sound: true,
-      },
+      permissions: { alert: true, badge: true, sound: true },
       popInitialNotification: true,
       requestPermissions: false,
     });
 
     try {
       const permissionResult = PushNotification.requestPermissions?.();
-      if (permissionResult && typeof permissionResult.then === "function") {
+      if (permissionResult && typeof permissionResult.then === 'function') {
         await permissionResult;
       }
     } catch (error) {
+      console.error('Push permission error:', error);
     }
   };
 
@@ -77,12 +78,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await login({ username: storedUsername, password: storedPassword });
 
       if (data.success && data.user) {
-        setname(data.user.name || '');
-        setAccountNumber?.(data.user.account_number || undefined);
-        setBalance?.(data.user.balance !== undefined ? data.user.balance / 100 : undefined);
-        setIsAuthenticated(true);
         setUsername(storedUsername);
         setPassword(storedPassword);
+        setname(data.user.name || '');
+        setAccountNumber(data.user.account_number || undefined);
+        setBalance(data.user.balance !== undefined ? data.user.balance / 100 : undefined);
+        setIsAuthenticated(true);
 
         const authData = {
           username: storedUsername,
@@ -93,7 +94,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           isAuthenticated: true,
         };
         await AsyncStorage.setItem('authData', JSON.stringify(authData));
-        await registerPushToken();
       } else {
         setIsAuthenticated(false);
         if (data.message?.includes('Invalid credentials')) {
@@ -111,16 +111,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
+    if (isAuthenticated && username) {
+      registerPushToken(username);
+    }
+  }, [isAuthenticated, username]);
+
+  useEffect(() => {
     const loadAuthData = async () => {
       try {
         const storedAuth = await AsyncStorage.getItem('authData');
         if (storedAuth) {
-          const { username, password, name, account_number, balance, isAuthenticated } = JSON.parse(storedAuth);
+          const {
+            username,
+            password,
+            name,
+            account_number,
+            balance,
+            isAuthenticated,
+          } = JSON.parse(storedAuth);
+
           setUsername(username || '');
           setPassword(password || '');
           setname(name || '');
-          setAccountNumber?.(account_number || undefined);
-          setBalance?.(balance !== undefined ? balance : undefined);
+          setAccountNumber(account_number || undefined);
+          setBalance(balance !== undefined ? balance : undefined);
           setIsAuthenticated(isAuthenticated || false);
 
           if (username && password) {
@@ -132,9 +146,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setTimeout(() => setIsLoading(false), 100);
         }
       } catch (error) {
+        console.error('loadAuthData error:', error);
         setTimeout(() => setIsLoading(false), 100);
       }
     };
+
     loadAuthData();
   }, []);
 
@@ -144,32 +160,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUsername('');
       setPassword('');
       setname('');
-      setAccountNumber?.(undefined);
-      setBalance?.(undefined);
+      setAccountNumber(undefined);
+      setBalance(undefined);
       setIsAuthenticated(false);
     } catch (error) {
+      console.error('Logout error:', error);
     }
   };
 
+  // ✅ Memo hóa context để tránh re-render không cần thiết
+  const contextValue = useMemo(
+    () => ({
+      username,
+      setUsername,
+      password,
+      setPassword,
+      isAuthenticated,
+      setIsAuthenticated,
+      name,
+      setname,
+      account_number,
+      setAccountNumber,
+      balance,
+      setBalance,
+      logout,
+      isLoading,
+    }),
+    [
+      username,
+      password,
+      isAuthenticated,
+      name,
+      account_number,
+      balance,
+      isLoading,
+      logout,
+    ]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        name,
-        setname,
-        username,
-        setUsername,
-        password,
-        setPassword,
-        isAuthenticated,
-        setIsAuthenticated,
-        account_number,
-        setAccountNumber,
-        balance,
-        setBalance,
-        logout,
-        isLoading,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

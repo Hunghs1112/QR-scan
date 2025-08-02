@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+  ReactNode,
+} from 'react';
 
 interface TransactionContextType {
   recipientAccountNumber: string;
@@ -17,31 +24,72 @@ interface TransactionContextType {
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
-export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [recipientAccountNumber, setRecipientAccountNumber] = useState<string>('');
-  const [recipientName, setRecipientName] = useState<string>('');
-  const [amount, setAmount] = useState<string>('0');
-  const [amountText, setAmountText] = useState<string>('');
-  const [transferContent, setTransferContent] = useState<string>('CHUYEN TIEN');
-  const [loading, setLoading] = useState<boolean>(false);
+export const TransactionProvider = ({ children }: { children: ReactNode }) => {
+  const [recipientAccountNumber, _setRecipientAccountNumber] = useState('');
+  const [recipientName, _setRecipientName] = useState('');
+  const [amount, _setAmount] = useState('0');
+  const [amountText, _setAmountText] = useState('');
+  const [transferContent, _setTransferContent] = useState('');
+  const [loading, _setLoading] = useState(false);
+
+  // Memoized setters để tránh re-render không cần thiết
+  const setRecipientAccountNumber = useCallback((value: string) => {
+    _setRecipientAccountNumber(value);
+  }, []);
+
+  const setRecipientName = useCallback((value: string) => {
+    _setRecipientName(value);
+  }, []);
+
+  const setAmount = useCallback((value: string) => {
+    _setAmount(value);
+  }, []);
+
+  const setAmountText = useCallback((value: string) => {
+    _setAmountText(value);
+  }, []);
+
+  const setTransferContent = useCallback((value: string) => {
+    _setTransferContent(value);
+  }, []);
+
+  const setLoading = useCallback((value: boolean) => {
+    _setLoading(value);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      recipientAccountNumber,
+      setRecipientAccountNumber,
+      recipientName,
+      setRecipientName,
+      amount,
+      setAmount,
+      amountText,
+      setAmountText,
+      transferContent,
+      setTransferContent,
+      loading,
+      setLoading,
+    }),
+    [
+      recipientAccountNumber,
+      setRecipientAccountNumber,
+      recipientName,
+      setRecipientName,
+      amount,
+      setAmount,
+      amountText,
+      setAmountText,
+      transferContent,
+      setTransferContent,
+      loading,
+      setLoading,
+    ]
+  );
 
   return (
-    <TransactionContext.Provider
-      value={{
-        recipientAccountNumber,
-        setRecipientAccountNumber,
-        recipientName,
-        setRecipientName,
-        amount,
-        setAmount,
-        amountText,
-        setAmountText,
-        transferContent,
-        setTransferContent,
-        loading,
-        setLoading,
-      }}
-    >
+    <TransactionContext.Provider value={contextValue}>
       {children}
     </TransactionContext.Provider>
   );

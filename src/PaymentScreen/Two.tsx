@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, ImageBackground, ScrollView } from 'react-native';
+import { SafeAreaView, ScrollView } from 'react-native';
 import Header from './Header';
 import TransferSection from './TransferSection';
 import RecentSection from './RecentSection';
@@ -9,14 +9,12 @@ import styles from './styles';
 const Two = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ImageBackground source={require('../screen/image/whiteback.png')} style={styles.background}>
-        <ScrollView style={styles.scrollView}>
-          <Header />
-          <TransferSection />
-          <RecentSection />
-          <TabSection />
-        </ScrollView>
-      </ImageBackground>
+      <ScrollView style={styles.scrollView}>
+        <Header />
+        <TransferSection />
+        <RecentSection />
+        <TabSection />
+      </ScrollView>
     </SafeAreaView>
   );
 };

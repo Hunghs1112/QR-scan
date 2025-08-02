@@ -5,7 +5,7 @@ import { styles } from "./styles";
 import { IMAGES } from "./constants";
 import type { NavigationProp } from "./types";
 
-export const QuickActionsSection: React.FC = () => {
+export const QuickActionsSection: React.FC = React.memo(() => {
   const navigation = useNavigation<NavigationProp>();
 
   return (
@@ -42,4 +42,4 @@ export const QuickActionsSection: React.FC = () => {
       </View>
     </View>
   );
-};
+});

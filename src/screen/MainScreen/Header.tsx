@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Image } from "react-native";
 import { styles } from "./styles";
 import { IMAGES } from "./constants";
 
-export const Header: React.FC = () => {
+export const Header: React.FC = React.memo(() => {
   return (
     <View style={styles.header}>
       <View style={styles.logoContainer}>
@@ -24,4 +24,4 @@ export const Header: React.FC = () => {
       </View>
     </View>
   );
-};
+});

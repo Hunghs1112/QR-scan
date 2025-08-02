@@ -5,7 +5,7 @@ import { styles } from "./styles";
 import { IMAGES } from "./constants";
 import type { NavigationProp } from "./types";
 
-export const Header: React.FC = () => {
+export const Header: React.FC = React.memo(() => {
   const navigation = useNavigation<NavigationProp>();
 
   return (
@@ -39,4 +39,4 @@ export const Header: React.FC = () => {
       </View>
     </View>
   );
-};
+});

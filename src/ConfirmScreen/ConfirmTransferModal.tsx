@@ -1,7 +1,13 @@
-import React, { forwardRef, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions, PanResponder } from 'react-native';
+import React, { forwardRef, useRef, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions } from 'react-native';
 import Modal from 'react-native-modal';
 import { pinModalStyles, otpModalStyles } from './ModalStyles';
+import { PanResponder } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PIN_MODAL_HEIGHT = SCREEN_HEIGHT * 0.4;
+const OTP_MODAL_HEIGHT = SCREEN_HEIGHT * 0.8;
+const SWIPE_THRESHOLD = 100;
 
 type ConfirmTransferModalsProps = {
   isModalVisible: boolean;
@@ -15,11 +21,6 @@ type ConfirmTransferModalsProps = {
   handleOtpInput: (text: string) => void;
   otpTimer: number;
 };
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PIN_MODAL_HEIGHT = SCREEN_HEIGHT * 0.4;
-const OTP_MODAL_HEIGHT = SCREEN_HEIGHT * 0.8;
-const SWIPE_THRESHOLD = 100;
 
 const ConfirmTransferModals = forwardRef(({
   isModalVisible,
@@ -35,77 +36,170 @@ const ConfirmTransferModals = forwardRef(({
 }: ConfirmTransferModalsProps, ref) => {
   const inputRef = useRef<TextInput>(null);
 
-  const pinPanY = useRef(new Animated.Value(0)).current;
-  const [pinIsDragging, setPinIsDragging] = useState(false);
+  const pinTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const pinOpacity = useRef(new Animated.Value(0)).current;
 
-  const pinTranslateY = pinPanY.interpolate({
-    inputRange: [0, PIN_MODAL_HEIGHT],
-    outputRange: [0, PIN_MODAL_HEIGHT],
-    extrapolate: 'clamp',
-  });
+  const otpTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const otpOpacity = useRef(new Animated.Value(0)).current;
+
+  // Reset PIN khi đóng modal
+  useEffect(() => {
+    if (!isModalVisible) {
+      handleOtpInput('');
+    }
+  }, [isModalVisible]);
+
+  useEffect(() => {
+    if (!otpModalVisible) {
+      handleOtpInput('');
+    }
+  }, [otpModalVisible]);
+
+  // Hiệu ứng mở/đóng modal PIN
+  useEffect(() => {
+    if (isModalVisible) {
+      Animated.parallel([
+        Animated.spring(pinTranslateY, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pinOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(pinTranslateY, {
+          toValue: SCREEN_HEIGHT,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pinOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isModalVisible]);
+
+  // Hiệu ứng mở/đóng modal OTP
+  useEffect(() => {
+    if (otpModalVisible) {
+      Animated.parallel([
+        Animated.spring(otpTranslateY, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+        Animated.timing(otpOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(otpTranslateY, {
+          toValue: SCREEN_HEIGHT,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(otpOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [otpModalVisible]);
 
   const pinPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy >= 0,
-      onPanResponderMove: Animated.event(
-        [null, { dy: pinPanY }],
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          pinTranslateY.setValue(gestureState.dy);
+          pinOpacity.setValue(1 - gestureState.dy / PIN_MODAL_HEIGHT);
+        }
+      },
       onPanResponderRelease: (_, gestureState) => {
-        setPinIsDragging(false);
         if (gestureState.dy > SWIPE_THRESHOLD) {
-          Animated.timing(pinPanY, {
-            toValue: PIN_MODAL_HEIGHT,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            setModalVisible(false);
-            pinPanY.setValue(0);
-          });
+          Animated.parallel([
+            Animated.timing(pinTranslateY, {
+              toValue: SCREEN_HEIGHT,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pinOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => setModalVisible(false));
         } else {
-          Animated.spring(pinPanY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          Animated.parallel([
+            Animated.spring(pinTranslateY, {
+              toValue: 0,
+              tension: 65,
+              friction: 11,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pinOpacity, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start();
         }
       },
     })
   ).current;
 
-  const otpPanY = useRef(new Animated.Value(0)).current;
-  const [otpIsDragging, setOtpIsDragging] = useState(false);
-
-  const otpTranslateY = otpPanY.interpolate({
-    inputRange: [0, OTP_MODAL_HEIGHT],
-    outputRange: [0, OTP_MODAL_HEIGHT],
-    extrapolate: 'clamp',
-  });
-
   const otpPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy >= 0,
-      onPanResponderMove: Animated.event(
-        [null, { dy: otpPanY }],
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          otpTranslateY.setValue(gestureState.dy);
+          otpOpacity.setValue(1 - gestureState.dy / OTP_MODAL_HEIGHT);
+        }
+      },
       onPanResponderRelease: (_, gestureState) => {
-        setOtpIsDragging(false);
         if (gestureState.dy > SWIPE_THRESHOLD) {
-          Animated.timing(otpPanY, {
-            toValue: OTP_MODAL_HEIGHT,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            setOtpModalVisible(false);
-            otpPanY.setValue(0);
-          });
+          Animated.parallel([
+            Animated.timing(otpTranslateY, {
+              toValue: SCREEN_HEIGHT,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(otpOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => setOtpModalVisible(false));
         } else {
-          Animated.spring(otpPanY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          Animated.parallel([
+            Animated.spring(otpTranslateY, {
+              toValue: 0,
+              tension: 65,
+              friction: 11,
+              useNativeDriver: true,
+            }),
+            Animated.timing(otpOpacity, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start();
         }
       },
     })
@@ -117,10 +211,6 @@ const ConfirmTransferModals = forwardRef(({
         isVisible={isModalVisible}
         onBackdropPress={() => setModalVisible(false)}
         style={pinModalStyles.modal}
-        swipeDirection={['down']}
-        onSwipeComplete={() => setModalVisible(false)}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
         backdropOpacity={0.5}
         deviceHeight={SCREEN_HEIGHT}
         propagateSwipe
@@ -128,7 +218,7 @@ const ConfirmTransferModals = forwardRef(({
         <Animated.View
           style={[
             pinModalStyles.modalContent,
-            { transform: [{ translateY: pinTranslateY }], height: PIN_MODAL_HEIGHT },
+            { transform: [{ translateY: pinTranslateY }], height: PIN_MODAL_HEIGHT, opacity: pinOpacity },
           ]}
           {...pinPanResponder.panHandlers}
         >
@@ -170,10 +260,6 @@ const ConfirmTransferModals = forwardRef(({
         isVisible={otpModalVisible}
         onBackdropPress={() => setOtpModalVisible(false)}
         style={otpModalStyles.modal}
-        swipeDirection={['down']}
-        onSwipeComplete={() => setOtpModalVisible(false)}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
         backdropOpacity={0.5}
         deviceHeight={SCREEN_HEIGHT}
         propagateSwipe
@@ -181,7 +267,7 @@ const ConfirmTransferModals = forwardRef(({
         <Animated.View
           style={[
             otpModalStyles.modalContent,
-            { transform: [{ translateY: otpTranslateY }], height: OTP_MODAL_HEIGHT },
+            { transform: [{ translateY: otpTranslateY }], height: OTP_MODAL_HEIGHT, opacity: otpOpacity },
           ]}
           {...otpPanResponder.panHandlers}
         >

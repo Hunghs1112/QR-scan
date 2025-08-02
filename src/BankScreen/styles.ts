@@ -119,7 +119,7 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
   bankDropdownIcon: {
-    marginRight: 14,
+    marginRight: 0,
   },
   dashedLine: {
     borderBottomWidth: 1,
@@ -143,8 +143,8 @@ export const styles = StyleSheet.create({
   },
   contactIcon: {
     marginTop: 4,
-   width: 50,
-   height: 50
+    width: 50,
+    height: 50
   },
   inputWrapper: {
     flex: 1,
@@ -164,6 +164,12 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
+    height: 48, // Fixed height to match placeholder
+  },
+  recipientPlaceholder: {
+    height: 48, // Matches recipientContainer height
+    marginHorizontal: 25,
+    marginTop: 0,
   },
   recipientNameSection: {
     flexDirection: "row",
@@ -216,10 +222,9 @@ export const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     paddingRight: 4,
-    
   },
   vndText: {
-   color: "#182d38",
+    color: "#182d38",
     fontSize: 12, // 3/5 of amountInput fontSize
     fontWeight: "600",
     alignSelf: "center",
@@ -302,7 +307,7 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
   continueButton: {
-    backgroundColor: "#77a6d2",
+    backgroundColor: "#035aa7",
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 42,

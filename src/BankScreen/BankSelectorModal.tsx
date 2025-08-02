@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TouchableOpacity, FlatList, Image, TextInput } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Modal, View, Text, TouchableOpacity, FlatList, Image, TextInput, PanResponder, Animated, Dimensions } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { styles } from './BankSelectorModalStyles';
 import { useBankSelectorModalLogic } from './BankSelectorModalLogic';
+import { useBank } from '../Context/BankContext';
 
 interface Bank {
   id: string;
@@ -21,61 +22,98 @@ interface BankSelectorModalProps {
   loading: boolean;
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const BankSelectorModal: React.FC<BankSelectorModalProps> = ({ visible, onClose, banks, onSelectBank, loading }) => {
   const { handleSelectBank, handleClose, searchQuery, setSearchQuery, filteredBanks } = useBankSelectorModalLogic({
     onClose,
     onSelectBank,
     banks,
   });
+  const { renderBankLogo } = useBank();
 
-  const [svgCache, setSvgCache] = useState<Record<string, string | null>>({});
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const modalHeight = SCREEN_HEIGHT * 0.7; // Modal chiếm 70% chiều cao màn hình
 
+  // Hiệu ứng mở modal
   useEffect(() => {
-    const loadSvgs = async () => {
-      const cache: Record<string, string | null> = {};
-      for (const bank of banks) {
-        if (bank.icon_url) {
-          try {
-            const response = await fetch(bank.icon_url);
-            const svgData = await response.text();
-            cache[bank.id] = svgData.trim().startsWith('<svg') ? svgData : null;
-            setSvgCache((prev) => ({ ...prev, [bank.id]: cache[bank.id] }));
-          } catch (error) {
-            cache[bank.id] = null;
-            setSvgCache((prev) => ({ ...prev, [bank.id]: cache[bank.id] }));
-          }
-        } else {
-          cache[bank.id] = null;
-          setSvgCache((prev) => ({ ...prev, [bank.id]: cache[bank.id] }));
-        }
-      }
-    };
-    if (banks.length > 0) {
-      loadSvgs();
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: SCREEN_HEIGHT,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [banks]);
+  }, [visible]);
+
+  // PanResponder để kéo modal xuống để đóng
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+          opacity.setValue(1 - gestureState.dy / modalHeight);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > modalHeight * 0.3) {
+          Animated.parallel([
+            Animated.timing(translateY, {
+              toValue: SCREEN_HEIGHT,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => handleClose());
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            tension: 65,
+            friction: 11,
+            useNativeDriver: true,
+          }).start();
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const renderBankItem = ({ item }: { item: Bank }) => (
     <TouchableOpacity style={styles.bankItem} onPress={() => handleSelectBank(item)}>
       <View style={styles.bankItemContent}>
         <View style={styles.bankItemRow}>
-          {item.icon_url && svgCache[item.id] ? (
-            svgCache[item.id]!.startsWith('<svg') ? (
-              <SvgXml xml={svgCache[item.id]!} width={36} height={36} style={styles.bankIcon} />
-            ) : (
-              <Image
-                source={require('../screen/image/nh.png')}
-                style={styles.bankIcon}
-                resizeMode="contain"
-              />
-            )
-          ) : (
-            <Image
-              source={require('../screen/image/nh.png')}
-              style={styles.bankIcon}
-              resizeMode="contain"
-            />
-          )}
+          {renderBankLogo(item.id, 36, 36, styles.bankIcon)}
           <Text style={styles.bankItemText}>
             {item.short_name} ({item.code})
           </Text>
@@ -86,11 +124,18 @@ const BankSelectorModal: React.FC<BankSelectorModalProps> = ({ visible, onClose,
   );
 
   return (
-    <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={handleClose}>
-      <View style={styles.modalBackground}>
-        <View style={styles.modalContent}>
+    <Modal animationType="none" transparent={true} visible={visible} onRequestClose={handleClose}>
+      <Animated.View style={[styles.modalBackground, { opacity }]}>
+        <Animated.View
+          style={[styles.modalContent, { transform: [{ translateY }], maxHeight: modalHeight }]}
+          {...panResponder.panHandlers}
+        >
+          <View style={styles.handleBar} />
           <View style={styles.header}>
             <Text style={styles.headerText}>Chọn ngân hàng</Text>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <Icon name="close" size={24} color="#999" />
+            </TouchableOpacity>
           </View>
           <View style={styles.searchContainer}>
             <TextInput
@@ -102,14 +147,23 @@ const BankSelectorModal: React.FC<BankSelectorModalProps> = ({ visible, onClose,
             />
             <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
           </View>
-          <FlatList
-            data={filteredBanks}
-            renderItem={renderBankItem}
-            keyExtractor={(item) => item.id}
-            style={styles.bankList}
-          />
-        </View>
-      </View>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Đang tải...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredBanks}
+              renderItem={renderBankItem} // Sửa từ renderItem thành renderBankItem
+              keyExtractor={(item) => item.id}
+              style={styles.bankList}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+            />
+          )}
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };

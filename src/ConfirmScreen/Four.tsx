@@ -1,28 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SvgXml } from 'react-native-svg';
-import styles from './styles';
+import Icon from 'react-native-vector-icons/Feather';
 import { useFourLogic } from './FourLogic';
 import { useBank } from '../Context/BankContext';
-import Icon from 'react-native-vector-icons/Feather';
+import styles from './styles';
 import ConfirmTransferModals from './ConfirmTransferModal';
 
-type RootStackParamList = {
-  Login: undefined;
-  Main: undefined;
-  Home: undefined;
-  Payment: undefined;
-  Bank: undefined;
-  QRPage: undefined;
-  Bill: undefined;
-  Confirm: undefined;
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 const ConfirmTransferMain = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+
   const {
     recipientAccountNumber,
     recipientName,
@@ -46,78 +34,23 @@ const ConfirmTransferMain = () => {
     handleOtpInput,
     otpLoading,
     convertNumberToText,
-    otpTimer
+    otpTimer,
   } = useFourLogic();
-  const { banks } = useBank();
-  const navigation = useNavigation<NavigationProp>();
 
-  const [svgCache, setSvgCache] = useState<Record<string, string | null>>({});
+  const { banks, renderBankLogo } = useBank();
 
-  useEffect(() => {
-    const loadSvgs = async () => {
-      const cache: Record<string, string | null> = {};
-      const mbBank = banks.find((bank) => bank.code === 'MB');
-      if (mbBank && mbBank.icon_url) {
-        try {
-          const response = await fetch(mbBank.icon_url);
-          const svgData = await response.text();
-          if (svgData.trim().startsWith('<svg')) {
-            cache[mbBank.id] = svgData;
-          } else {
-            cache[mbBank.id] = null;
-          }
-        } catch (error) {
-          cache[mbBank.id] = null;
-        }
-      } else {
-        cache['MB'] = null;
-      }
-
-      if (selectedBank && selectedBank.icon_url) {
-        try {
-          const response = await fetch(selectedBank.icon_url);
-          const svgData = await response.text();
-          if (svgData.trim().startsWith('<svg')) {
-            cache[selectedBank.id] = svgData;
-          } else {
-            cache[selectedBank.id] = null;
-          }
-        } catch (error) {
-          cache[selectedBank.id] = null;
-        }
-      } else if (selectedBank) {
-        cache[selectedBank.id] = null;
-      }
-
-      setSvgCache(cache);
-    };
-    loadSvgs();
-  }, [banks, selectedBank]);
-
-  const renderBankLogo = (bankId: string | undefined, bankCode: string) => {
-    if (bankId && svgCache[bankId] && svgCache[bankId]!.startsWith('<svg')) {
-      return <SvgXml xml={svgCache[bankId]!} width={50} height={62} style={styles.bankIcon} />;
-    }
-    return (
-      <Image
-        source={require('../screen/image/nh.png')}
-        style={styles.bankIcon}
-        resizeMode="contain"
-      />
-    );
-  };
-
-  const formatTransferContent = (content: string | undefined) => {
-    const defaultContent = 'chuyen tien';
+  const formatTransferContent = useCallback((content: string | undefined) => {
+    const defaultContent = `${name || 'NGUYEN VAN A'} chuyen tien`;
     const text = content || defaultContent;
-    const words = text.split(' ');
-    if (words.length <= 2) {
-      return text.toUpperCase();
-    }
+    const words = text.trim().split(' ');
+    if (words.length <= 2) return text.toUpperCase();
+
     const namePart = words.slice(0, -2).join(' ').toUpperCase();
     const nonNamePart = words.slice(-2).join(' ');
     return `${namePart} ${nonNamePart}`;
-  };
+  }, [name]);
+
+  const senderBank = useMemo(() => banks.find((bank) => bank.code === 'MB'), [banks]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,7 +74,7 @@ const ConfirmTransferMain = () => {
               <Text style={styles.personLabel}>Người chuyển</Text>
               <View style={[styles.infoContainer, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  {renderBankLogo(banks.find((bank) => bank.code === 'MB')?.id, 'MB')}
+                  {renderBankLogo(senderBank?.id, 50, 62, styles.bankIcon)}
                 </View>
                 <View>
                   <Text style={styles.infoTextBold}>{(name || 'NGUYEN VAN C').toUpperCase()}</Text>
@@ -157,18 +90,12 @@ const ConfirmTransferMain = () => {
               <Text style={styles.personLabel1}>Người nhận</Text>
               <View style={[styles.infoContainer1, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  {selectedBank ? renderBankLogo(selectedBank.id, selectedBank.code) : (
-                    <Image
-                      source={require('../screen/image/nh.png')}
-                      style={styles.bankIcon}
-                      resizeMode="contain"
-                    />
-                  )}
+                  {renderBankLogo(selectedBank?.id, 50, 62, styles.bankIcon)}
                 </View>
                 <View>
                   <Text style={styles.infoTextBold1}>{(recipientName || 'NGUYEN VAN FF').toUpperCase()}</Text>
                   <Text style={styles.infoText1}>{recipientAccountNumber || '8810681618'}</Text>
-                  <Text style={styles.bankNameText1}>{selectedBank?.name || ''}</Text>
+                  <Text style={styles.bankNameText1}>{selectedBank?.name || 'Ngân hàng'}</Text>
                 </View>
               </View>
             </View>

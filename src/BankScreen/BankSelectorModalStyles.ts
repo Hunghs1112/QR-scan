@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    minHeight: '86%',
   },
   header: {
     flexDirection: 'row',
@@ -67,14 +67,23 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  // Added styles for missing elements
+  handleBar: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#ccc',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginVertical: 10,
+  },
   searchContainer: {
-     borderBottomWidth: 1,
-     borderColor: '#E3F2FD',
-      borderRadius: 8,
+    borderBottomWidth: 1,
+    borderColor: '#E3F2FD',
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
+    paddingHorizontal: 10,
+    marginBottom: 15,
   },
   searchIcon: {
     position: 'absolute',
@@ -101,15 +110,25 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
   dragHandle: {
-  width: 40,
-  height: 5,
-  backgroundColor: '#ccc',
-  borderRadius: 2.5,
-  alignSelf: 'center',
-  marginVertical: 10,
-},
-modal: {
-  justifyContent: 'flex-end',
-  margin: 0,
-},
+    width: 40,
+    height: 5,
+    backgroundColor: '#ccc',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginVertical: 10,
+  },
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  // Added styles for new elements
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#333',
+  },
 });

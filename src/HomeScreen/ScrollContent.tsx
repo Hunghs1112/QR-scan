@@ -37,7 +37,7 @@ export const ScrollContent: React.FC<ScrollContentProps> = ({
   useEffect(() => {
     let value = -4;
     let direction = 1;
-    const speed = 0.17;
+    const speed = 0.14;
     let rafId: number;
 
     const animate = () => {

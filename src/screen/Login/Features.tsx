@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Image, Text } from "react-native";
 import { styles } from "./styles";
 import { IMAGES } from "./constants";
 
-export const Features: React.FC = () => {
+export const Features: React.FC = React.memo(() => {
   return (
     <View style={styles.featuresContainer}>
       <TouchableOpacity style={styles.featureButton}>
@@ -20,4 +20,4 @@ export const Features: React.FC = () => {
       </TouchableOpacity>
     </View>
   );
-};
+});

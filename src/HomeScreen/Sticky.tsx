@@ -5,8 +5,7 @@ import { IMAGES } from "./constants";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "./types";
 
-export const Sticky: React.FC = (
-) => {
+export const Sticky: React.FC = React.memo(() => {
   const navigation = useNavigation<NavigationProp>();
   
   return (
@@ -36,4 +35,4 @@ export const Sticky: React.FC = (
       </View>
     </View>
   );
-};
+});

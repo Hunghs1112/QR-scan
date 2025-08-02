@@ -31,12 +31,13 @@ type Transaction = {
   recipient_account_number: string
   type: string
   timestamp: string
+  balance: number // Added balance to Transaction type
   codes: { randomNum1?: number; randomNum2?: number; transactionCode?: string }
 }
 
 const TransactionHistory: React.FC = () => {
   const { groupedTransactions, loading, handleRefresh, formatVND, formatTimestamp, handleSearch } = useTransactionLogic()
-  const { account_number, name, balance } = useAuth()
+  const { account_number, name } = useAuth() // Removed balance from useAuth
   const navigation = useNavigation<NavigationProp>()
   const [activeTab, setActiveTab] = useState<"mine" | "balance">("balance")
   const [searchText, setSearchText] = useState("")
@@ -45,12 +46,12 @@ const TransactionHistory: React.FC = () => {
     const maskedAccount = account_number ? `${account_number.slice(0, 2)}xxx${account_number.slice(-4)}` : "TKxxxxxx"
     const formattedAmount = `${item.type === "CASH_IN" ? "+" : "-"}${formatVND(item.amount)}VND`
     const formattedTime = formatTimestamp(item.timestamp)
-    const formattedBalance = formatVND(balance || 0)
+    const formattedBalance = formatVND(item.balance || 0) // Use balance from transaction
     const { randomNum1, randomNum2, transactionCode } = item.codes || {}
 
     const notificationContent =
       item.type === "CASH_IN"
-        ? `TK ${maskedAccount} | GD: ${formattedAmount}|${formattedTime}|SD: +${formattedBalance}VND|Từ: ${item.recipient_name} - ${item.recipient_account_number}|ND: MBVCB.${randomNum1 || "1234567"}.${randomNum2 || "8901234"}.${item.recipient_name}...`
+        ? `TK ${maskedAccount} | GD: ${formattedAmount}|${formattedTime}|SD: ${formattedBalance}VND|Từ: ${item.recipient_name} - ${item.recipient_account_number}|ND: MBVCB.${randomNum1 || "1234567"}.${randomNum2 || "8901234"}.${item.recipient_name}...`
         : `TK: ${maskedAccount}|GD: ${formattedAmount} ${formattedTime}|SD: ${formattedBalance}VND|DEN: ${item.recipient_name} - ${item.recipient_account_number}|ND: ${name || "Người dùng"} chuyen tien- Ma GD ${transactionCode || "ACSP/P1234567"}`
 
     return (

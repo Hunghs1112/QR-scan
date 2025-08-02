@@ -30,14 +30,14 @@ export const useLoginLogic = () => {
   const [inputPositionY] = useState<Animated.Value>(new Animated.Value(0));
 
   useEffect(() => {
-    console.log("useLoginLogic: Checking authentication state:", { isAuthenticated, authLoading });
+    console.log('useLoginLogic.useEffect: Checking authentication state', { isAuthenticated, authLoading });
     if (!authLoading && isAuthenticated) {
-      console.log("useLoginLogic: User authenticated, navigating to Main");
+      console.log('useLoginLogic.useEffect: User authenticated, navigating to Main');
       navigation.navigate("Main");
     }
 
     const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
-      console.log("useLoginLogic: Keyboard shown");
+      console.log('useLoginLogic.keyboardDidShow: Keyboard shown');
       setKeyboardVisible(true);
       Animated.timing(inputPositionY, {
         toValue: -70,
@@ -47,7 +47,7 @@ export const useLoginLogic = () => {
     });
 
     const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
-      console.log("useLoginLogic: Keyboard hidden");
+      console.log('useLoginLogic.keyboardDidHide: Keyboard hidden');
       setKeyboardVisible(false);
       Animated.timing(inputPositionY, {
         toValue: 0,
@@ -57,7 +57,7 @@ export const useLoginLogic = () => {
     });
 
     return () => {
-      console.log("useLoginLogic: Cleaning up keyboard listeners");
+      console.log('useLoginLogic.useEffect: Cleaning up keyboard listeners');
       keyboardDidHideListener.remove();
       keyboardDidShowListener.remove();
     };
@@ -65,16 +65,16 @@ export const useLoginLogic = () => {
 
   const handleLogin = async (): Promise<void> => {
     if (!username || !password) {
-      console.log("useLoginLogic: Login attempt failed: Missing username or password", { username, password });
+      console.log('useLoginLogic.handleLogin: Login attempt failed: Missing username or password', { username, password });
       Alert.alert("Lỗi", "Vui lòng nhập tài khoản và mật khẩu!");
       return;
     }
     try {
-      console.log("useLoginLogic: Attempting login with:", { username, password });
+      console.log('useLoginLogic.handleLogin: Attempting login', { username, password });
       const data = await login({ username, password });
-      console.log("useLoginLogic: Login response:", {
+      console.log('useLoginLogic.handleLogin: Login response', {
         success: data.success,
-        user: data.user ? { name: data.user.name, account_number: data.user.account_number, balance: data.user.balance, image: data.user.image } : null,
+        user: data.user ? { name: data.user.name, account_number: data.user.account_number, balance: data.user.balance } : null,
         message: data.message,
       });
       if (data.success) {
@@ -84,7 +84,7 @@ export const useLoginLogic = () => {
         setIsAuthenticated(true);
         setUsername(username);
         setPassword(password);
-        console.log("useLoginLogic: Login successful, updating auth state:", {
+        console.log('useLoginLogic.handleLogin: Login successful, updating auth state', {
           username,
           password,
           name: data.user.name,
@@ -102,22 +102,22 @@ export const useLoginLogic = () => {
           isAuthenticated: true,
         };
         await AsyncStorage.setItem("authData", JSON.stringify(authData));
-        console.log("useLoginLogic: Saved auth data to AsyncStorage:", authData);
+        console.log('useLoginLogic.handleLogin: Saved auth data to AsyncStorage', authData);
 
         const storedAuth = await AsyncStorage.getItem("authData");
-        console.log("useLoginLogic: AsyncStorage after login:", storedAuth ? JSON.parse(storedAuth) : null);
+        console.log('useLoginLogic.handleLogin: AsyncStorage after login', storedAuth ? JSON.parse(storedAuth) : null);
 
-        console.log("useLoginLogic: Configuring push notification for token retrieval");
+        console.log('useLoginLogic.handleLogin: Configuring push notification for token retrieval');
         PushNotification.configure({
           onRegister: async (token) => {
-            console.log("useLoginLogic: Push notification token received:", token);
+            console.log('useLoginLogic.onRegister: Push notification token received', { token });
             await NotifService.sendTokenToServer(token.token, {
               isAuthenticated: true,
               username,
             });
           },
           onRegistrationError: (err) => {
-            console.error("useLoginLogic: Token registration error:", err.message, err);
+            console.error('useLoginLogic.onRegistrationError: Token registration error', err);
           },
           permissions: {
             alert: true,
@@ -128,31 +128,31 @@ export const useLoginLogic = () => {
           requestPermissions: false,
         });
 
-        console.log("useLoginLogic: Requesting push notification permissions");
+        console.log('useLoginLogic.handleLogin: Requesting push notification permissions');
         try {
           const permissionResult = PushNotification.requestPermissions?.();
           if (permissionResult && typeof permissionResult.then === "function") {
             permissionResult
               .then((result) => {
-                console.log("useLoginLogic: Permission request result:", result);
+                console.log('useLoginLogic.handleLogin: Permission request result', { result });
               })
               .catch((error) => {
-                console.error("useLoginLogic: Permission request error:", error);
+                console.error('useLoginLogic.handleLogin: Permission request error', error);
               });
           } else {
-            console.log("useLoginLogic: requestPermissions is not a Promise or not available.");
+            console.log('useLoginLogic.handleLogin: requestPermissions is not a Promise or not available');
           }
         } catch (error) {
-          console.error("useLoginLogic: Error requesting permissions:", error);
+          console.error('useLoginLogic.handleLogin: Error requesting permissions', error);
         }
 
-        console.log("useLoginLogic: Navigating to Main");
+        console.log('useLoginLogic.handleLogin: Navigating to Main');
         navigation.navigate("Main");
       } else {
         throw new Error(data.message || "Đăng nhập thất bại");
       }
     } catch (error) {
-      console.error("useLoginLogic: Login error:", error);
+      console.error('useLoginLogic.handleLogin: Login error', error);
       Alert.alert(
         "Lỗi",
         (error as Error).message || "Đăng nhập thất bại. Vui lòng kiểm tra tài khoản hoặc mật khẩu."
@@ -161,7 +161,7 @@ export const useLoginLogic = () => {
   };
 
   const logout = async () => {
-    console.log("useLoginLogic: Initiating logout");
+    console.log('useLoginLogic.logout: Initiating logout');
     await authLogout();
     setLocalPassword("");
   };
