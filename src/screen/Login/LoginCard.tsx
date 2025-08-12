@@ -20,7 +20,6 @@ export const LoginCard: React.FC = () => {
     setLocalPassword,
     inputPositionY,
     handleLogin,
-    logout,
   } = useLoginLogic();
 
   return (
@@ -56,7 +55,7 @@ export const LoginCard: React.FC = () => {
         </View>
 
         <View style={styles.actionLinksContainer}>
-          <TouchableOpacity onPress={logout}>
+          <TouchableOpacity >
             <Text style={styles.actionLink}>Tài khoản khác</Text>
           </TouchableOpacity>
           <TouchableOpacity>

@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert } from 'react-native';
-
 import { useTransaction } from '../Context/TransactionContext';
-import { useAuth } from '../Context/AuthContext';
 import { useBank } from '../Context/BankContext';
+import { useAuth } from '../Context/AuthContext';
 
 type RootStackParamList = {
   Main: undefined;
@@ -20,14 +19,13 @@ type RootStackParamList = {
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const API_CONFIG = {
-  key: 'c6b7d702-7d46-44d8-8d4b-9a5d2e0ac276key',
-  secret: '8fbc5f31-dd43-4344-bcbb-79ae59fb8358secret',
+  key: '38f3b25e-b174-4307-892a-0b301b356fc7key',
+  secret: '2a03afc4-7c30-497c-91c3-c95134828c01secret',
   url: 'https://api.banklookup.net',
 };
 
 export const useThreeLogic = () => {
   const navigation = useNavigation<NavigationProp>();
-
   const {
     recipientAccountNumber,
     setRecipientAccountNumber,
@@ -39,37 +37,24 @@ export const useThreeLogic = () => {
     setTransferContent,
     loading,
     setLoading,
+    clearContext,
   } = useTransaction();
-
   const { account_number, balance, name } = useAuth();
   const { banks, selectedBank, setSelectedBank } = useBank();
-
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const defaultTransferContent = `${name || 'NGUYEN VAN A'} chuyen tien`;
-
-  useEffect(() => {
-    // Only set defaultTransferContent if transferContent is not yet initialized
-    if (transferContent === undefined || transferContent === null) {
-      setTransferContent(defaultTransferContent);
-    }
-  }, [defaultTransferContent, setTransferContent]);
-
-  const formatVND = useCallback((amount: string | number): string => {
-    const num = typeof amount === 'string' ? parseFloat(amount.replace(/,/g, '')) : amount;
-    if (isNaN(num) || num === 0) return '0';
-    return Math.floor(num).toLocaleString('en-US');
+  const formatVND = useCallback((value: string): string => {
+    const num = value.replace(/[^0-9]/g, '');
+    if (!num) return '';
+    return parseInt(num).toLocaleString('en-US', { minimumFractionDigits: 0 });
   }, []);
 
   const fetchRecipientInfo = useCallback(async (accountNumber: string, bankCode: string) => {
     if (!bankCode || !accountNumber) return;
-
     setLoading(true);
-
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-
       const response = await fetch(API_CONFIG.url, {
         method: 'POST',
         headers: {
@@ -80,19 +65,10 @@ export const useThreeLogic = () => {
         body: JSON.stringify({ bank: bankCode, account: accountNumber }),
         signal: controller.signal,
       });
-
       clearTimeout(timeout);
-
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       const data = await response.json();
-
-      const ownerName =
-        data.success && data.data?.ownerName
-          ? data.data.ownerName
-          : data.message === 'Hết credit'
-          ? 'Hết credit'
-          : 'Nguyen Van A';
-
+      const ownerName = data.success && data.data?.ownerName ? data.data.ownerName : 'Nguyen Van A';
       setRecipientName(ownerName);
     } catch (err) {
       setRecipientName('Nguyen Van A');
@@ -111,45 +87,30 @@ export const useThreeLogic = () => {
 
   const debouncedFetchRecipientInfo = useCallback(
     debounce(fetchRecipientInfo, 1000),
-    [fetchRecipientInfo],
+    [fetchRecipientInfo]
   );
 
-  const handleAmountChange = useCallback((value: string) => {
-    setAmount(value.replace(/[^0-9]/g, ''));
-  }, [setAmount]);
+  const handleContinue = useCallback(
+    (displayAmount: string, displayTransferContent: string) => {
+      const cleanAmount = displayAmount.replace(/[^0-9]/g, '');
+      const parsedAmount = parseFloat(cleanAmount || '0');
+      const cleanTransferContent = displayTransferContent.trim() || (name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
 
-  const handleContinue = useCallback(() => {
-    const parsedAmount = parseFloat(amount || '0');
+      if (!recipientAccountNumber || !recipientName || !cleanAmount || parsedAmount <= 0 || !selectedBank || !account_number) {
+        Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin cần thiết.');
+        return;
+      }
+      if (balance !== undefined && parsedAmount > balance) {
+        Alert.alert('Lỗi', 'Số dư không đủ để thực hiện giao dịch!');
+        return;
+      }
 
-    if (
-      !recipientAccountNumber ||
-      !recipientName ||
-      !amount ||
-      parsedAmount <= 0 ||
-      !selectedBank ||
-      !account_number ||
-      !name
-    ) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin cần thiết.');
-      return;
-    }
-
-    if (balance !== undefined && parsedAmount > balance) {
-      Alert.alert('Lỗi', 'Số dư không đủ để thực hiện giao dịch!');
-      return;
-    }
-
-    navigation.navigate('Confirm');
-  }, [
-    recipientAccountNumber,
-    recipientName,
-    amount,
-    selectedBank,
-    account_number,
-    name,
-    balance,
-    navigation,
-  ]);
+      setAmount(cleanAmount);
+      setTransferContent(cleanTransferContent);
+      navigation.navigate('Confirm');
+    },
+    [recipientAccountNumber, recipientName, selectedBank, account_number, balance, name, setAmount, setTransferContent, navigation]
+  );
 
   useEffect(() => {
     if (recipientAccountNumber && selectedBank?.code) {
@@ -160,21 +121,19 @@ export const useThreeLogic = () => {
   }, [recipientAccountNumber, selectedBank?.code, debouncedFetchRecipientInfo, setRecipientName]);
 
   useEffect(() => {
-    return () => {
-      setRecipientAccountNumber('');
-      setRecipientName('');
-      setAmount('');
-      setTransferContent(defaultTransferContent);
-      setSelectedBank(null);
-    };
-  }, [
-    setRecipientAccountNumber,
-    setRecipientName,
-    setAmount,
-    setTransferContent,
-    setSelectedBank,
-    defaultTransferContent,
-  ]);
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const isNavigatingToConfirm =
+        e.data.action.type === 'NAVIGATE' &&
+        e.data.action.payload &&
+        'name' in e.data.action.payload &&
+        e.data.action.payload.name === 'Confirm';
+      if (!isNavigatingToConfirm) {
+        clearContext();
+        setSelectedBank(null);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, clearContext, setSelectedBank]);
 
   return {
     recipientAccountNumber,
@@ -193,10 +152,7 @@ export const useThreeLogic = () => {
     banks,
     account_number,
     balance,
-    name,
-    handleAmountChange,
     handleContinue,
     formatVND,
-    defaultTransferContent,
   };
 };

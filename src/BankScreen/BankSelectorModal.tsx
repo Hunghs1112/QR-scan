@@ -160,6 +160,7 @@ const BankSelectorModal: React.FC<BankSelectorModalProps> = ({ visible, onClose,
               initialNumToRender={10}
               maxToRenderPerBatch={10}
               windowSize={5}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </Animated.View>

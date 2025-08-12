@@ -24,14 +24,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginRight: 10,
-    
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#29557c',
+    color: '#2f5884',
     textAlign: 'left',
-   marginBottom: 8,
+    marginBottom: 8,
   },
   orderNumber: {
     fontSize: 16,
@@ -40,7 +39,11 @@ const styles = StyleSheet.create({
     right: 0,
   },
   contentContainer: {
-    paddingHorizontal: 20, // Applied padding to content container
+    flexGrow: 1,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    paddingBottom: 80, // Thêm padding để tránh che bởi buttonContainer
   },
   transactionCard: {
     backgroundColor: '#f9f8fe',
@@ -54,7 +57,7 @@ const styles = StyleSheet.create({
   transactionBlock: {
     marginBottom: 0,
     borderBottomWidth: 1,
-    borderColor: '#d9def2'
+    borderColor: '#d9def2',
   },
   title: {
     fontSize: 16,
@@ -74,12 +77,11 @@ const styles = StyleSheet.create({
   infoBlock: {
     marginBottom: 12,
   },
-   infoBlock1: {
+  infoBlock1: {
     marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#d9def2',
   },
- 
   infoBlock2: {
     marginBottom: 12,
   },
@@ -119,7 +121,7 @@ const styles = StyleSheet.create({
     color: '#888888',
     marginBottom: 16,
   },
-   personLabel1: {
+  personLabel1: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#888888',
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888888',
   },
-   infoText1: {
+  infoText1: {
     fontSize: 16,
     color: '#888888',
   },
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxWidth: 280,
   },
-   bankNameText1: {
+  bankNameText1: {
     fontSize: 16,
     color: '#888888',
     flexWrap: 'wrap',
@@ -167,7 +169,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexWrap: 'wrap',
     minHeight: 40,
-
+    marginLeft: 40,
   },
   label: {
     fontSize: 16,
@@ -202,42 +204,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#1b313e',
     flex: 1,
-   
   },
-   buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 100,
-    gap : 20,
+  buttonContainerWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#f9f8fe',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 20,
   },
   backButton: {
     height: 46,
-    backgroundColor: "#e5f2ff",
+    backgroundColor: '#e5f2ff',
     borderWidth: 1,
-    borderColor: "#266fb6",
+    borderColor: '#2f5884',
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 6,
     flex: 0.4,
-    alignItems: "center",
+    alignItems: 'center',
   },
   backButtonText: {
-    color: "#266fb6",
+    color: '#2f5884',
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   confirmButton: {
-    backgroundColor: "#035aa7",
+    backgroundColor: '#2f5884',
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 42,
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center',
   },
   confirmButtonText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   modalBackground: {
     flex: 1,
@@ -262,7 +271,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#001CFF',
+    color: '#2F5884',
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -283,7 +292,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderWidth: 1.5,
-    borderColor: '#001CFF',
+    borderColor: '#2F5884',
     textAlign: 'center',
     fontSize: 20,
     borderRadius: 10,
@@ -294,7 +303,7 @@ const styles = StyleSheet.create({
   },
   resetButtonText: {
     fontSize: 18,
-    color: '#001CFF',
+    color: '#2F5884',
   },
   otpLabel: {
     fontSize: 18,
@@ -304,13 +313,13 @@ const styles = StyleSheet.create({
   otpCode: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#001CFF',
+    color: '#2F5884',
     marginBottom: 10,
     textAlign: 'center',
   },
   otpTimer: {
     fontSize: 18,
-    color: '#001CFF',
+    color: '#2F5884',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -332,7 +341,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderWidth: 2,
-    borderColor: '#001CFF',
+    borderColor: '#2F5884',
     borderRadius: 20,
     backgroundColor: '#f9f8fe',
     textAlign: 'center',
@@ -341,7 +350,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   pinCircleFilled: {
-    backgroundColor: '#001CFF',
+    backgroundColor: '#2F5884',
   },
 });
 

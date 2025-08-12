@@ -51,7 +51,7 @@ const TransactionHistory: React.FC = () => {
 
     const notificationContent =
       item.type === "CASH_IN"
-        ? `TK ${maskedAccount} | GD: ${formattedAmount}|${formattedTime}|SD: ${formattedBalance}VND|Từ: ${item.recipient_name} - ${item.recipient_account_number}|ND: MBVCB.${randomNum1 || "1234567"}.${randomNum2 || "8901234"}.${item.recipient_name}...`
+        ? `TK ${maskedAccount} | GD: ${formattedAmount}|${formattedTime}|SD: ${formattedBalance}VND|Từ: ${item.recipient_name} - ${item.recipient_account_number}|ND: MBVCB.${randomNum1 || "1234567"}.${randomNum2 || "8901234"}`
         : `TK: ${maskedAccount}|GD: ${formattedAmount} ${formattedTime}|SD: ${formattedBalance}VND|DEN: ${item.recipient_name} - ${item.recipient_account_number}|ND: ${name || "Người dùng"} chuyen tien- Ma GD ${transactionCode || "ACSP/P1234567"}`
 
     return (

@@ -6,7 +6,7 @@ export enum BankCode {
     BAOVIET_BANK = "BAOVIETBANK",
     BANVIET = "BVB",
     BIDC = "BIDC",
-    BIDV = "BID",
+    BIDV = "BIDV",
     CAKE = "CAKE",
     CBBANK = "VNCB",
     CIMB = "CIMB",

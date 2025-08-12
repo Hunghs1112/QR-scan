@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions, Keyboard } from 'react-native';
 import Modal from 'react-native-modal';
 import { pinModalStyles, otpModalStyles } from './ModalStyles';
 import { PanResponder } from 'react-native';
@@ -20,6 +20,8 @@ type ConfirmTransferModalsProps = {
   digitalOtp: string;
   handleOtpInput: (text: string) => void;
   otpTimer: number;
+  setDigitalOtp: (value: string) => void; // Added to fix missing setDigitalOtp
+  setOtpTimer: (value: number) => void; // Added to fix missing setOtpTimer
 };
 
 const ConfirmTransferModals = forwardRef(({
@@ -33,8 +35,11 @@ const ConfirmTransferModals = forwardRef(({
   digitalOtp,
   handleOtpInput,
   otpTimer,
+  setDigitalOtp,
+  setOtpTimer,
 }: ConfirmTransferModalsProps, ref) => {
   const inputRef = useRef<TextInput>(null);
+  const [isPinComplete, setIsPinComplete] = useState(false);
 
   const pinTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const pinOpacity = useRef(new Animated.Value(0)).current;
@@ -46,14 +51,16 @@ const ConfirmTransferModals = forwardRef(({
   useEffect(() => {
     if (!isModalVisible) {
       handleOtpInput('');
+      setIsPinComplete(false);
     }
-  }, [isModalVisible]);
+  }, [isModalVisible, handleOtpInput]);
 
   useEffect(() => {
     if (!otpModalVisible) {
       handleOtpInput('');
+      setIsPinComplete(false);
     }
-  }, [otpModalVisible]);
+  }, [otpModalVisible, handleOtpInput]);
 
   // Hiệu ứng mở/đóng modal PIN
   useEffect(() => {
@@ -205,6 +212,19 @@ const ConfirmTransferModals = forwardRef(({
     })
   ).current;
 
+  const handlePinInput = (text: string) => {
+    if (isPinComplete) return; // Ngăn nhập thêm nếu đã đủ 6 chữ số
+    const formatted = text.replace(/[^0-9]/g, '').slice(0, 6);
+    handleOtpInput(formatted);
+    if (formatted.length === 6) {
+      setIsPinComplete(true);
+      setDigitalOtp('76759528');
+      setOtpModalVisible(true);
+      setOtpTimer(100);
+      Keyboard.dismiss();
+    }
+  };
+
   return (
     <>
       <Modal
@@ -232,7 +252,9 @@ const ConfirmTransferModals = forwardRef(({
               <TouchableOpacity
                 key={index}
                 onPress={() => {
-                  inputRef.current?.focus();
+                  if (!isPinComplete) {
+                    inputRef.current?.focus();
+                  }
                 }}
                 style={[
                   pinModalStyles.pinCircle,
@@ -246,8 +268,9 @@ const ConfirmTransferModals = forwardRef(({
               maxLength={6}
               keyboardType="numeric"
               value={otp}
-              onChangeText={handleOtpInput}
+              onChangeText={handlePinInput}
               showSoftInputOnFocus={true}
+              editable={!isPinComplete} // Vô hiệu hóa nhập liệu khi PIN hoàn tất
             />
           </View>
           <TouchableOpacity style={pinModalStyles.resetButton}>

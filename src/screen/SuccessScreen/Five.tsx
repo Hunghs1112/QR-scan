@@ -7,7 +7,6 @@ import { useTransaction } from '../../Context/TransactionContext';
 import { useBank } from '../../Context/BankContext';
 import { useAuth } from '../../Context/AuthContext';
 import styles from './styles';
-import { formatVND } from './formatVND';
 
 type RootStackParamList = {
   Main: undefined;
@@ -24,24 +23,26 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const TransactionSuccess = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { recipientAccountNumber, recipientName, amount, transferContent, loading, setRecipientAccountNumber, setRecipientName, setAmount, setAmountText, setTransferContent } = useTransaction();
+  const { recipientAccountNumber, recipientName, amount, transferContent, loading, clearContext } = useTransaction();
   const { selectedBank, setSelectedBank, renderBankLogo } = useBank();
   const { account_number, name, balance } = useAuth();
 
-  const defaultTransferContent = `${name || 'NGUYEN VAN A'} chuyen tien`;
-  const balanceInDollars = balance !== undefined ? balance / 100 : 0;
-  const amountInCents = parseFloat(amount?.replace(/,/g, '') || '0') * 100;
-  const remainingBalanceInCents = balance !== undefined ? balance - amountInCents : 0;
+  const formatVND = (value: string): string => {
+    const num = parseFloat(value.replace(/[^0-9]/g, '')) || 0;
+    return num > 0 ? num.toLocaleString('en-US') : '0';
+  };
+
   const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' – ' + new Date().toLocaleDateString('vi-VN');
 
+  const handleBackPress = () => {
+    clearContext(); // Đặt lại toàn bộ TransactionContext
+    setSelectedBank(null); // Đặt lại selectedBank
+    navigation.navigate('Home'); // Điều hướng đến Bank
+  };
+
   const handleAnotherTransaction = () => {
-    setRecipientAccountNumber('');
-    setRecipientName('');
-    setAmount('0');
-    setAmountText('');
-    setTransferContent(defaultTransferContent);
+    clearContext();
     setSelectedBank(null);
-    
     navigation.navigate('Bank');
   };
 
@@ -50,11 +51,10 @@ const TransactionSuccess = () => {
       <View style={styles.container}>
         <TouchableOpacity
           style={styles.homeButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={handleBackPress} // Sử dụng handleBackPress thay vì navigate trực tiếp
         >
           <Image source={require('../image/home2.png')} style={styles.homeIcon} />
         </TouchableOpacity>
-
         <Image source={require('../image/tick.png')} style={styles.checkmarkIcon} />
         <Text style={styles.successText}>Chuyển tiền thành công</Text>
         <Text style={styles.amountText}>{amount ? formatVND(amount) : formatVND('10000')} VND</Text>
@@ -67,15 +67,13 @@ const TransactionSuccess = () => {
             <Text style={styles.bankText}>{selectedBank?.short_name || 'Ngân hàng'}</Text>
           </View>
           <Text style={styles.accountNumberText}>{recipientAccountNumber || '8810681618'}</Text>
-          <Text style={styles.descriptionText}>{transferContent || defaultTransferContent}</Text>
+          <Text style={styles.descriptionText}>{transferContent || `${name || 'NGUYEN VAN A'} chuyen tien`}</Text>
           <View style={styles.transactionBoxArrowContainer}>
             <Icon name="chevron-down" size={14} color="#1B313E" style={styles.transactionBoxArrow} />
           </View>
         </View>
-
         <Text style={styles.thankYouText}>Cảm ơn bạn đã sử dụng dịch vụ của MB Bank</Text>
         <Image source={require('../image/logoP1.png')} style={styles.mbBankLogo} />
-
         <View style={styles.actionButtonsContainer}>
           <View style={styles.actionButtonWrapper}>
             <TouchableOpacity style={styles.actionButton}>
@@ -96,7 +94,6 @@ const TransactionSuccess = () => {
             <Text style={styles.actionButtonText}>Lưu mẫu</Text>
           </View>
         </View>
-
         <View style={styles.bottomButtonContainer}>
           <View style={styles.applePayButtonContainer}>
             <TouchableOpacity style={styles.applePayButton}>

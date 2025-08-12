@@ -1,10 +1,21 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
   background: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#e5f2ff',
     flex: 1,
     paddingBottom: 0,
+  },
+  mainContainer: {
+    backgroundColor: '#e5f2ff',
+    flex: 1,
+    position: 'relative',
+  },
+  scrollContainer: {
+    flex: 1,
+    marginTop: 80,
   },
   upperContainer: {
     backgroundColor: "#ffffff",
@@ -12,9 +23,7 @@ export const styles = StyleSheet.create({
   },
   lowerContainer: {
     backgroundColor: "#e5f2ff",
-    flex: 1,
     paddingTop: 16,
-    minHeight: 400,
   },
   headerSection: {
     backgroundColor: "#ffffff",
@@ -24,7 +33,11 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     paddingHorizontal: 14,
-    marginBottom: 14,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   headerContainer: {
     flexDirection: "row",
@@ -37,9 +50,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "bold",
-    color: "#0158ab",
+    color: "#2f5884",
     textAlign: "left",
     marginLeft: 20,
+  },
+  scrollContent: {
+    flexGrow: 0,
   },
   sectionTitle: {
     color: "#182d38",
@@ -63,7 +79,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   accountText: {
-    color: "#0158ab",
+    color: "#2f5884",
     fontSize: 13,
     fontWeight: "bold",
     marginBottom: 8,
@@ -144,7 +160,7 @@ export const styles = StyleSheet.create({
   contactIcon: {
     marginTop: 4,
     width: 50,
-    height: 50
+    height: 50,
   },
   inputWrapper: {
     flex: 1,
@@ -164,12 +180,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
-    height: 48, // Fixed height to match placeholder
-  },
-  recipientPlaceholder: {
-    height: 48, // Matches recipientContainer height
-    marginHorizontal: 25,
-    marginTop: 0,
+    height: 48,
   },
   recipientNameSection: {
     flexDirection: "row",
@@ -187,13 +198,13 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#266fb6",
+    borderColor: "#2f5884",
     borderRadius: 30,
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
   saveButtonText: {
-    color: "#266fb6",
+    color: "#2f5884",
     fontSize: 14,
     fontWeight: "600",
     marginRight: 4,
@@ -206,7 +217,6 @@ export const styles = StyleSheet.create({
     height: 64,
     padding: 9,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 25,
     marginBottom: 24,
@@ -215,9 +225,16 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
+  },
+  amountInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   amountInput: {
-    color: "#0158ab",
+    color: "#2f5884",
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
@@ -225,7 +242,7 @@ export const styles = StyleSheet.create({
   },
   vndText: {
     color: "#182d38",
-    fontSize: 12, // 3/5 of amountInput fontSize
+    fontSize: 12,
     fontWeight: "600",
     alignSelf: "center",
   },
@@ -255,7 +272,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   contentLabel: {
-    color: "#0158ab",
+    color: "#2f5884",
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -264,7 +281,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
   },
   contentInput: {
-    marginLeft: -4,
+    flex: 1,
     fontSize: 18,
     color: "#252836",
     paddingVertical: 7,
@@ -277,37 +294,36 @@ export const styles = StyleSheet.create({
     height: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 32,
+    marginLeft: 8,
+  },
+  buttonContainerWrapper: {
+    backgroundColor: '#e5f2ff',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
+    gap: 10,
   },
   backButton: {
     height: 46,
-    left: 10,
     backgroundColor: "#e5f2ff",
     borderWidth: 2,
-    borderColor: "#266fb6",
+    borderColor: "#2f5884",
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 18,
     flex: 0.62,
-    marginRight: 24,
     alignItems: "center",
   },
   backButtonText: {
-    color: "#266fb6",
+    color: "#2f5884",
     fontSize: 15,
     fontWeight: "600",
   },
   continueButton: {
-    backgroundColor: "#035aa7",
+    backgroundColor: "#2f5884",
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 42,

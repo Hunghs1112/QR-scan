@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
   headerText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0158ab',
+    color: '#2f5884',
   },
   closeButton: {
     padding: 10,

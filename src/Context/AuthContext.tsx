@@ -1,15 +1,6 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useMemo,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login } from '../utils/apiService';
-import NotifService from '../utils/NotifService';
-import PushNotification from 'react-native-push-notification';
+import messaging from '@react-native-firebase/messaging';
 
 interface AuthContextType {
   username: string;
@@ -39,120 +30,75 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [balance, setBalance] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
-  const registerPushToken = async (authUsername: string) => {
-    PushNotification.configure({
-      onRegister: async (token) => {
-        await NotifService.sendTokenToServer(token.token, {
-          isAuthenticated: true,
-          username: authUsername,
-        });
-      },
-      onRegistrationError: (err) => {
-        console.error('Push token registration error:', err);
-      },
-      permissions: { alert: true, badge: true, sound: true },
-      popInitialNotification: true,
-      requestPermissions: false,
-    });
-
+  const sendFcmToken = async (username: string, token: string) => {
     try {
-      const permissionResult = PushNotification.requestPermissions?.();
-      if (permissionResult && typeof permissionResult.then === 'function') {
-        await permissionResult;
+      console.log('AuthProvider: Sending FCM token to server:', { username, token });
+      const response = await fetch('http://51.79.181.161:5000/save-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, fcmToken: token }),
+      });
+      const result = await response.json();
+      console.log('AuthProvider: Save token response:', result);
+      if (!result.success) {
+        console.warn('AuthProvider: Failed to save FCM token:', result.message);
       }
     } catch (error) {
-      console.error('Push permission error:', error);
+      console.error('AuthProvider: Error sending FCM token:', error);
     }
   };
-
-  const silentLogin = async (storedUsername: string, storedPassword: string) => {
-    if (!storedUsername || !storedPassword) {
-      setIsAuthenticated(false);
-      await AsyncStorage.removeItem('authData');
-      setTimeout(() => setIsLoading(false), 100);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const data = await login({ username: storedUsername, password: storedPassword });
-
-      if (data.success && data.user) {
-        setUsername(storedUsername);
-        setPassword(storedPassword);
-        setname(data.user.name || '');
-        setAccountNumber(data.user.account_number || undefined);
-        setBalance(data.user.balance !== undefined ? data.user.balance / 100 : undefined);
-        setIsAuthenticated(true);
-
-        const authData = {
-          username: storedUsername,
-          password: storedPassword,
-          name: data.user.name || '',
-          account_number: data.user.account_number || undefined,
-          balance: data.user.balance !== undefined ? data.user.balance / 100 : undefined,
-          isAuthenticated: true,
-        };
-        await AsyncStorage.setItem('authData', JSON.stringify(authData));
-      } else {
-        setIsAuthenticated(false);
-        if (data.message?.includes('Invalid credentials')) {
-          await AsyncStorage.removeItem('authData');
-        }
-      }
-    } catch (error: any) {
-      setIsAuthenticated(false);
-      if (error.response?.status === 401) {
-        await AsyncStorage.removeItem('authData');
-      }
-    } finally {
-      setTimeout(() => setIsLoading(false), 100);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && username) {
-      registerPushToken(username);
-    }
-  }, [isAuthenticated, username]);
 
   useEffect(() => {
     const loadAuthData = async () => {
       try {
         const storedAuth = await AsyncStorage.getItem('authData');
         if (storedAuth) {
-          const {
-            username,
-            password,
-            name,
-            account_number,
-            balance,
-            isAuthenticated,
-          } = JSON.parse(storedAuth);
-
+          const { username, name, account_number, balance } = JSON.parse(storedAuth);
           setUsername(username || '');
-          setPassword(password || '');
           setname(name || '');
           setAccountNumber(account_number || undefined);
           setBalance(balance !== undefined ? balance : undefined);
-          setIsAuthenticated(isAuthenticated || false);
+          setIsAuthenticated(true);
 
-          if (username && password) {
-            await silentLogin(username, password);
-          } else {
-            setTimeout(() => setIsLoading(false), 100);
+          // Register FCM token if user is authenticated
+          const authStatus = await messaging().requestPermission({
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: true,
+          });
+          const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+          if (enabled && username) {
+            const fcmToken = await messaging().getToken();
+            if (fcmToken) {
+              await sendFcmToken(username, fcmToken);
+            }
           }
-        } else {
-          setTimeout(() => setIsLoading(false), 100);
         }
       } catch (error) {
         console.error('loadAuthData error:', error);
+      } finally {
         setTimeout(() => setIsLoading(false), 100);
       }
     };
 
     loadAuthData();
-  }, []);
+
+    // Handle FCM token refresh
+    const unsubscribeOnTokenRefresh = messaging().onTokenRefresh(async (newToken) => {
+      console.log('AuthProvider: FCM token refreshed:', newToken);
+      if (username) {
+        await sendFcmToken(username, newToken);
+      }
+    });
+
+    return () => {
+      unsubscribeOnTokenRefresh();
+    };
+  }, [username]);
 
   const logout = async () => {
     try {
@@ -163,12 +109,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAccountNumber(undefined);
       setBalance(undefined);
       setIsAuthenticated(false);
+      console.log('AuthProvider: Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
-  // ✅ Memo hóa context để tránh re-render không cần thiết
   const contextValue = useMemo(
     () => ({
       username,
@@ -186,23 +132,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logout,
       isLoading,
     }),
-    [
-      username,
-      password,
-      isAuthenticated,
-      name,
-      account_number,
-      balance,
-      isLoading,
-      logout,
-    ]
+    [username, password, isAuthenticated, name, account_number, balance, isLoading]
   );
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

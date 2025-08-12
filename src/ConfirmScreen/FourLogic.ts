@@ -1,14 +1,15 @@
-// useFourLogic.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Alert, Keyboard } from 'react-native';
 import { useTransaction } from '../Context/TransactionContext';
 import { useBank } from '../Context/BankContext';
 import { useAuth } from '../Context/AuthContext';
 import { cashOut } from '../utils/apiService';
-import NotifService from '../utils/NotifService';
-import { Alert, Keyboard } from 'react-native';
+import PushNotification from 'react-native-push-notification';
+import { debounce } from 'lodash';
 
+// Define RootStackParamList
 type RootStackParamList = {
   Login: undefined;
   Main: undefined;
@@ -17,7 +18,9 @@ type RootStackParamList = {
   Bank: undefined;
   QRPage: undefined;
   Bill: undefined;
-  Confirm: undefined;
+  Confirm: { success?: boolean };
+  History: undefined;
+  FaceScan: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -30,7 +33,41 @@ interface CashOutData {
   recipient_account_number: string;
 }
 
-export const useFourLogic = () => {
+interface Bank {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface FourLogicReturn {
+  recipientAccountNumber: string;
+  recipientName: string;
+  amount: string;
+  transferContent: string;
+  transactionLoading: boolean;
+  selectedBank: Bank | null;
+  username: string;
+  account_number: string | undefined;
+  name: string | undefined;
+  balance: number | undefined;
+  isModalVisible: boolean;
+  setModalVisible: Dispatch<SetStateAction<boolean>>;
+  otpModalVisible: boolean;
+  setOtpModalVisible: Dispatch<SetStateAction<boolean>>;
+  handleConfirm: () => void;
+  handleOtpConfirm: () => Promise<void>;
+  otp: string;
+  digitalOtp: string;
+  handleOtpInput: (text: string) => void;
+  otpLoading: boolean;
+  convertNumberToText: (value: string) => string;
+  otpTimer: number;
+  setDigitalOtp: Dispatch<SetStateAction<string>>;
+  setOtpTimer: Dispatch<SetStateAction<number>>;
+  formatVND: (value: string) => string;
+}
+
+export const useFourLogic = (): FourLogicReturn => {
   const navigation = useNavigation<NavigationProp>();
   const {
     recipientAccountNumber,
@@ -39,6 +76,7 @@ export const useFourLogic = () => {
     transferContent,
     setLoading: setTransactionLoading,
     loading: transactionLoading,
+    clearContext,
   } = useTransaction();
   const { selectedBank } = useBank();
   const { username, account_number, name, balance, setBalance } = useAuth();
@@ -59,20 +97,20 @@ export const useFourLogic = () => {
           setOtpModalVisible(false);
           return 0;
         }
-        return prev - 1;
+        return prev - 1; // Update every 5 seconds
       });
-    }, 1000);
+    }, 1000); // Changed from 1000ms to 5000ms
     return () => clearInterval(timer);
-  }, [otpModalVisible]);
+  }, [otpModalVisible, setOtpModalVisible]);
 
-  const formatVND = useCallback((amount: string | number): string => {
-    const num = typeof amount === 'string' ? parseFloat(amount.replace(/,/g, '')) : amount;
-    return isNaN(num) || num === 0 ? '0' : Math.floor(num).toLocaleString('en-US');
+  const formatVND = useMemo(() => (value: string): string => {
+    const num = parseFloat(value.replace(/[^0-9]/g, '')) || 0;
+    return num > 0 ? num.toLocaleString('en-US') : '0';
   }, []);
 
-  const convertNumberToText = useCallback((amount: string | number): string => {
-    const num = typeof amount === 'string' ? parseFloat(amount.replace(/,/g, '')) : amount;
-    if (isNaN(num) || num === 0) return 'Không đồng';
+  const convertNumberToText = useMemo(() => (value: string): string => {
+    const num = parseFloat(value.replace(/[^0-9]/g, '')) || 0;
+    if (num === 0) return 'Không đồng';
 
     const units = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
     const numbers = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
@@ -82,11 +120,9 @@ export const useFourLogic = () => {
       let result = '';
       if (hundred) result += `${numbers[hundred]} trăm `;
       else if (!isFirst && (ten > 0 || unit > 0)) result += 'không trăm ';
-
       if (ten === 1) result += `mười${unit === 1 ? ' một' : unit === 5 ? ' lăm' : unit ? ' ' + numbers[unit] : ''}`;
       else if (ten > 1) result += `${numbers[ten]} mươi${unit === 1 ? ' mốt' : unit === 5 ? ' lăm' : unit ? ' ' + numbers[unit] : ''}`;
       else if (unit) result += numbers[unit];
-
       return result.trim();
     };
 
@@ -96,10 +132,10 @@ export const useFourLogic = () => {
       if (!part) return '';
       const unitIdx = arr.length - 1 - i;
       return `${readThreeDigits(part, i === 0)} ${units[unitIdx]}`;
-    }).filter(Boolean).join(' ').replace(/ +/g, ' ').replace(/^./, (m) => m.toUpperCase()) + 'Việt Nam Đồng';
+    }).filter(Boolean).join(' ').replace(/ +/g, ' ').replace(/^./, (m) => m.toUpperCase()) + ' Việt Nam Đồng';
   }, []);
 
-  const handleOtpInput = useCallback((text: string) => {
+  const handleOtpInput = useCallback(debounce((text: string) => {
     const formatted = text.replace(/[^0-9]/g, '').slice(0, 6);
     setOtp(formatted);
     if (formatted.length === 6) {
@@ -108,14 +144,21 @@ export const useFourLogic = () => {
       setOtpTimer(100);
       Keyboard.dismiss();
     }
-  }, []);
+  }, 100), [setDigitalOtp, setOtpModalVisible, setOtpTimer]);
 
-  const handleConfirm = useCallback(() => setModalVisible(true), []);
+  const handleConfirm = useCallback(() => {
+    const parsedAmount = parseFloat(amount.replace(/[^0-9]/g, '')) || 0;
+    if (parsedAmount > 9999999) {
+      navigation.navigate('FaceScan');
+    } else {
+      setModalVisible(true);
+    }
+  }, [amount, navigation, setModalVisible]);
 
   const handleOtpConfirm = useCallback(async () => {
     setOtpLoading(true);
     try {
-      const parsedAmount = parseFloat(amount.replace(/,/g, '') || '0');
+      const parsedAmount = parseFloat(amount.replace(/[^0-9]/g, '') || '0');
       if (!account_number || !name || !recipientAccountNumber || !recipientName || parsedAmount <= 0) {
         throw new Error('Vui lòng cung cấp đầy đủ thông tin!');
       }
@@ -132,19 +175,37 @@ export const useFourLogic = () => {
       const response = await cashOut(data);
       setBalance?.(response.balance);
 
+      // Generate notification content
       const maskedAccount = `${account_number.slice(0, 2)}xxx${account_number.slice(-4)}`;
-      const formattedAmount = `-${formatVND(parsedAmount)}VND`;
+      const formattedAmount = `-${formatVND(amount)}VND`;
       const now = new Date();
       const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1)
         .toString()
         .padStart(2, '0')}/${now.getFullYear().toString().slice(-2)} ${formattedTime}`;
-      const balanceVND = formatVND(response.balance);
+      const balanceVND = formatVND(response.balance.toString());
       const transactionCode = `ACSP/P${Math.floor(Math.random() * 1e7).toString().padStart(7, '0')}`;
-      const message = `TK:${maskedAccount}|GD: ${formattedAmount} ${formattedDate}|SD: ${balanceVND}VND|DEN: ${recipientName} - ${recipientAccountNumber}|ND: ${name} chuyen tien- Ma GD ${transactionCode}`;
+      const message = `TK:${maskedAccount}|GD: ${formattedAmount} ${formattedDate}|SD: ${balanceVND}VND|DEN: ${recipientName} - ${recipientAccountNumber}|ND: ${transferContent}- Ma GD ${transactionCode}`;
 
-      NotifService.sendLocalNotification(`Thông báo biến động số dư`, message);
+      // Delay notification to avoid blocking UI
+      setTimeout(() => {
+        PushNotification.localNotification({
+          channelId: 'remote-channel',
+          title: 'Thông báo biến động số dư',
+          message: message,
+          userInfo: {
+            transactionId: transactionCode,
+            type: 'transaction',
+          },
+          priority: 'high',
+          importance: 'high',
+          vibrate: true,
+          soundName: 'default',
+        });
+      }, 100);
+
       setOtp('');
+      setDigitalOtp('');
       setOtpModalVisible(false);
       setModalVisible(false);
       navigation.navigate('Bill');
@@ -153,7 +214,19 @@ export const useFourLogic = () => {
     } finally {
       setOtpLoading(false);
     }
-  }, [amount, account_number, name, recipientAccountNumber, recipientName, balance, username]);
+  }, [
+    amount,
+    account_number,
+    name,
+    recipientAccountNumber,
+    recipientName,
+    balance,
+    username,
+    setBalance,
+    navigation,
+    transferContent,
+    formatVND,
+  ]);
 
   return {
     recipientAccountNumber,
@@ -175,9 +248,11 @@ export const useFourLogic = () => {
     otp,
     digitalOtp,
     handleOtpInput,
-    formatVND,
     otpLoading,
     convertNumberToText,
     otpTimer,
+    setDigitalOtp,
+    setOtpTimer,
+    formatVND,
   };
 };

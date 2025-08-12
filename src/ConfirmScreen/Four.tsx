@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, SafeAreaView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image, SafeAreaView, ScrollView } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'; // Updated import
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Feather';
 import { useFourLogic } from './FourLogic';
@@ -8,9 +8,23 @@ import { useBank } from '../Context/BankContext';
 import styles from './styles';
 import ConfirmTransferModals from './ConfirmTransferModal';
 
-const ConfirmTransferMain = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+// Updated RootStackParamList
+type RootStackParamList = {
+  Login: undefined;
+  Main: undefined;
+  Home: undefined;
+  Payment: undefined;
+  Bank: undefined;
+  QRPage: undefined;
+  Bill: undefined;
+  Confirm: { success?: boolean };
+  History: undefined;
+  FaceScan: undefined;
+};
 
+const ConfirmTransferMain = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Confirm'>>(); // Corrected RouteProp import
   const {
     recipientAccountNumber,
     recipientName,
@@ -35,76 +49,97 @@ const ConfirmTransferMain = () => {
     otpLoading,
     convertNumberToText,
     otpTimer,
+    setDigitalOtp,
+    setOtpTimer,
   } = useFourLogic();
-
   const { banks, renderBankLogo } = useBank();
 
-  const formatTransferContent = useCallback((content: string | undefined) => {
-    const defaultContent = `${name || 'NGUYEN VAN A'} chuyen tien`;
-    const text = content || defaultContent;
-    const words = text.trim().split(' ');
-    if (words.length <= 2) return text.toUpperCase();
+  // Trigger modal if returning from FaceScanPage with success
+  useEffect(() => {
+    if (route.params?.success) {
+      setModalVisible(true);
+      navigation.setParams({ success: undefined }); // Clear param to prevent re-trigger
+    }
+  }, [route.params, setModalVisible, navigation]);
 
-    const namePart = words.slice(0, -2).join(' ').toUpperCase();
-    const nonNamePart = words.slice(-2).join(' ');
-    return `${namePart} ${nonNamePart}`;
-  }, [name]);
+  // Tìm ngân hàng gửi (MB Bank)
+  const senderBank = React.useMemo(() => banks.find((bank) => bank.code === 'MB'), [banks]);
 
-  const senderBank = useMemo(() => banks.find((bank) => bank.code === 'MB'), [banks]);
+  // Định dạng nội dung chuyển khoản mặc định nếu rỗng
+  const displayTransferContent = React.useMemo(
+    () => transferContent || (name ? `${name} chuyen tien` : 'Chuyển tiền'),
+    [transferContent, name]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="chevron-left" size={24} color="#29557c" style={styles.backIcon} />
+          <Icon name="chevron-left" size={24} color="#2f5884" style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Xác nhận thông tin</Text>
       </View>
-
-      <View style={styles.contentContainer}>
+      <ScrollView
+        style={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.transactionCard}>
           <View style={styles.transactionBlock}>
             <Text style={styles.title}>Số tiền giao dịch</Text>
-            <Text style={styles.amount}>{amount ? formatVND(amount) : '0'} VND</Text>
-            <Text style={styles.subLabel}>{amount ? convertNumberToText(amount) : 'Không Đồng'}</Text>
+            <Text style={styles.amount}>{amount ? `${formatVND(amount)} VND` : '0 VND'}</Text>
+            <Text style={styles.subLabel}>{amount ? convertNumberToText(amount) : 'Không đồng'}</Text>
           </View>
-
           <View style={styles.infoBlock}>
             <View style={styles.infoRow}>
               <Text style={styles.personLabel}>Người chuyển</Text>
               <View style={[styles.infoContainer, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  {renderBankLogo(senderBank?.id, 50, 62, styles.bankIcon)}
+                  {senderBank ? (
+                    renderBankLogo(senderBank.id, 50, 62, styles.bankIcon)
+                  ) : (
+                    <Image
+                      source={require('../screen/image/nh.png')}
+                      style={styles.bankIcon}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
                 <View>
-                  <Text style={styles.infoTextBold}>{(name || 'NGUYEN VAN C').toUpperCase()}</Text>
-                  <Text style={styles.infoText}>{account_number || '0911967363'}</Text>
+                  <Text style={styles.infoTextBold}>{name ? name.toUpperCase() : 'N/A'}</Text>
+                  <Text style={styles.infoText}>{account_number || 'N/A'}</Text>
                   <Text style={styles.bankNameText}>Ngân hàng TMCP Quân đội</Text>
                 </View>
               </View>
             </View>
           </View>
-
           <View style={styles.infoBlock1}>
             <View style={styles.infoRow1}>
               <Text style={styles.personLabel1}>Người nhận</Text>
               <View style={[styles.infoContainer1, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  {renderBankLogo(selectedBank?.id, 50, 62, styles.bankIcon)}
+                  {selectedBank ? (
+                    renderBankLogo(selectedBank.id, 50, 62, styles.bankIcon)
+                  ) : (
+                    <Image
+                      source={require('../screen/image/nh.png')}
+                      style={styles.bankIcon}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
                 <View>
-                  <Text style={styles.infoTextBold1}>{(recipientName || 'NGUYEN VAN FF').toUpperCase()}</Text>
-                  <Text style={styles.infoText1}>{recipientAccountNumber || '8810681618'}</Text>
+                  <Text style={styles.infoTextBold1}>{recipientName ? recipientName.toUpperCase() : 'N/A'}</Text>
+                  <Text style={styles.infoText1}>{recipientAccountNumber || 'N/A'}</Text>
                   <Text style={styles.bankNameText1}>{selectedBank?.name || 'Ngân hàng'}</Text>
                 </View>
               </View>
             </View>
           </View>
-
           <View style={styles.infoBlock2}>
             <View style={styles.infoRow3}>
-              <Text style={styles.label}>Nội dung chuyển tiền</Text>
-              <Text style={styles.transferContentText}>{formatTransferContent(transferContent)}</Text>
+              <Text style={styles.label}>Nội dung chuyển khoản</Text>
+              <Text style={styles.transferContentText}>{displayTransferContent}</Text>
             </View>
             <View style={styles.infoRow3}>
               <Text style={styles.label}>Phí giao dịch</Text>
@@ -116,22 +151,31 @@ const ConfirmTransferMain = () => {
             </View>
           </View>
         </View>
-
         <View style={styles.warningBox}>
-          <Image source={require('../screen/image/warn.png')} style={styles.warningIcon} resizeMode='contain'/>
-          <Text style={styles.warningText}>Vui lòng kiểm tra chính xác thông tin trước khi xác nhận giao dịch.</Text>
+          <Image source={require('../screen/image/warn.png')} style={styles.warningIcon} resizeMode="contain" />
+          <Text style={styles.warningText}>
+            Vui lòng kiểm tra chính xác thông tin trước khi xác nhận giao dịch.
+          </Text>
         </View>
-
+      </ScrollView>
+      <View style={styles.buttonContainerWrapper}>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            disabled={transactionLoading}
+          >
             <Text style={styles.backButtonText}>Quay lại</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm} disabled={transactionLoading}>
+          <TouchableOpacity
+            style={[styles.confirmButton]}
+            onPress={handleConfirm}
+            disabled={transactionLoading}
+          >
             <Text style={styles.confirmButtonText}>Xác nhận</Text>
           </TouchableOpacity>
         </View>
       </View>
-
       <ConfirmTransferModals
         isModalVisible={isModalVisible}
         setModalVisible={setModalVisible}
@@ -143,6 +187,8 @@ const ConfirmTransferMain = () => {
         digitalOtp={digitalOtp}
         handleOtpInput={handleOtpInput}
         otpTimer={otpTimer}
+        setDigitalOtp={setDigitalOtp}
+        setOtpTimer={setOtpTimer}
       />
     </SafeAreaView>
   );

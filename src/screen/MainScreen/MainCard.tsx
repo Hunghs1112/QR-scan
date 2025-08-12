@@ -8,39 +8,26 @@ import { useAuth } from "../../Context/AuthContext";
 import type { NavigationProp } from "./types";
 
 export const MainCard: React.FC = () => {
-  const { name, localPassword, setLocalPassword, inputPositionY, handleLogin } = useMainLogic();
-  const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
-  const navigation = useNavigation<NavigationProp>(); // Lấy navigation để điều hướng
+  const { name, localPassword, setLocalPassword, inputPositionY, handleLogin, handleLogout } = useMainLogic();
+  const { logout } = useAuth(); // Kept for compatibility, but not used
+  const navigation = useNavigation<NavigationProp>();
 
   // Hàm xử lý chia tên thành 2 dòng
   const formatName = (name: string) => {
     const words = name.trim().split(' ');
     if (words.length === 4) {
-      // Nếu có đúng 4 từ, chia 2 từ đầu cho dòng trên, 2 từ sau cho dòng dưới
       const firstLine = words.slice(0, 2).join(' ');
       const secondLine = words.slice(2).join(' ');
       return { firstLine, secondLine };
     } else if (words.length >= 3) {
-      // Nếu có 3 từ hoặc nhiều hơn (ngoài trường hợp 4 từ), lấy từ đầu tiên cho dòng trên
       const firstLine = words[0];
       const secondLine = words.slice(1).join(' ');
       return { firstLine, secondLine };
     }
-    // Nếu có 1 hoặc 2 từ, chia như trước
     return { firstLine: words[0] || '', secondLine: words.slice(1).join(' ') || '' };
   };
 
   const { firstLine, secondLine } = formatName(name || "User Name");
-
-  // Hàm xử lý khi nhấn "Tài khoản khác"
-  const handleOtherAccount = async () => {
-    try {
-      await logout(); // Gọi hàm logout từ AuthContext
-      navigation.navigate("Login"); // Điều hướng về màn hình Login
-    } catch (error) {
-      console.error("MainCard: Failed to logout:", error);
-    }
-  };
 
   return (
     <View style={styles.loginCardContainer}>
@@ -58,7 +45,10 @@ export const MainCard: React.FC = () => {
               {secondLine ? '\n' + secondLine : ''}
             </Text>
           </View>
-          <TouchableOpacity style={styles.faceIdButton}>
+          <TouchableOpacity 
+            style={styles.faceIdButton}
+            onPress={() => navigation.navigate('FaceID')}
+          >
             <Image source={IMAGES.face} style={styles.iconImage} />
           </TouchableOpacity>
         </View>
@@ -73,7 +63,7 @@ export const MainCard: React.FC = () => {
           />
         </View>
         <View style={styles.actionLinksContainer}>
-          <TouchableOpacity onPress={handleOtherAccount}>
+          <TouchableOpacity onPress={handleLogout}>
             <Text style={styles.actionLink}>Tài khoản khác</Text>
           </TouchableOpacity>
           <TouchableOpacity>

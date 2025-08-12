@@ -9,6 +9,8 @@ export type RootStackParamList = {
   QRPage: undefined;
   Bill: undefined;
   Confirm: undefined;
+  FaceScan: undefined;
+  FaceID: undefined;
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

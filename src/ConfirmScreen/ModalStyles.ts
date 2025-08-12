@@ -28,7 +28,7 @@ const pinModalStyles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '500',
-    color: '#29557c',
+    color: '#2f5884',
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -54,13 +54,13 @@ const pinModalStyles = StyleSheet.create({
     width: 28,
     height: 28,
     borderWidth: 1.5,
-    borderColor: '#29557c',
+    borderColor: '#2f5884',
     borderRadius: 20,
     backgroundColor: '#ffffff',
     margin: 5,
   },
   pinCircleFilled: {
-    backgroundColor: '#29557c',
+    backgroundColor: '#2f5884',
   },
   minimalInput: {
     width: 1,
@@ -75,7 +75,7 @@ const pinModalStyles = StyleSheet.create({
   },
   resetButtonText: {
     fontSize: 16,
-    color: '#29557c',
+    color: '#2f5884',
     fontWeight: '500',
   },
 });
@@ -114,7 +114,7 @@ const otpModalStyles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#29557c',
+    color: '#2f5884',
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -140,7 +140,7 @@ const otpModalStyles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#29557c',
+    color: '#2f5884',
     lineHeight: 40,
   },
   otpTimer: {
@@ -151,7 +151,7 @@ const otpModalStyles = StyleSheet.create({
     marginBottom: 32,
   },
   otpTimerHighlight: {
-    color: '#29557c',
+    color: '#2f5884',
     fontWeight: 'bold',
   },
   autoFillText: {
@@ -162,7 +162,7 @@ const otpModalStyles = StyleSheet.create({
     marginBottom: 64,
   },
   confirmButton: {
-    backgroundColor: '#29557c',
+    backgroundColor: '#2f5884',
     borderRadius: 4,
     paddingVertical: 12,
     width: '100%',

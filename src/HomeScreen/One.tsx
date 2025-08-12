@@ -21,7 +21,7 @@ const One: React.FC = () => {
   } = useOneLogic();
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
       <ImageBackground source={IMAGES.background} style={styles.background}>
         <Header />
         <ScrollContent

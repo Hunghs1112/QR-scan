@@ -1,11 +1,6 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useMemo,
-  useCallback,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { debounce } from 'lodash';
 
 interface TransactionContextType {
   recipientAccountNumber: string;
@@ -14,25 +9,23 @@ interface TransactionContextType {
   setRecipientName: (name: string) => void;
   amount: string;
   setAmount: (amount: string) => void;
-  amountText: string;
-  setAmountText: (text: string) => void;
   transferContent: string;
   setTransferContent: (content: string) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+  clearContext: () => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider = ({ children }: { children: ReactNode }) => {
+  const { name } = useAuth();
   const [recipientAccountNumber, _setRecipientAccountNumber] = useState('');
   const [recipientName, _setRecipientName] = useState('');
-  const [amount, _setAmount] = useState('0');
-  const [amountText, _setAmountText] = useState('');
+  const [amount, _setAmount] = useState('');
   const [transferContent, _setTransferContent] = useState('');
   const [loading, _setLoading] = useState(false);
 
-  // Memoized setters để tránh re-render không cần thiết
   const setRecipientAccountNumber = useCallback((value: string) => {
     _setRecipientAccountNumber(value);
   }, []);
@@ -41,13 +34,12 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     _setRecipientName(value);
   }, []);
 
-  const setAmount = useCallback((value: string) => {
-    _setAmount(value);
-  }, []);
-
-  const setAmountText = useCallback((value: string) => {
-    _setAmountText(value);
-  }, []);
+  const setAmount = useCallback(
+    debounce((value: string) => {
+      _setAmount(value);
+    }, 300),
+    []
+  );
 
   const setTransferContent = useCallback((value: string) => {
     _setTransferContent(value);
@@ -55,6 +47,14 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
   const setLoading = useCallback((value: boolean) => {
     _setLoading(value);
+  }, []);
+
+  const clearContext = useCallback(() => {
+    _setRecipientAccountNumber('');
+    _setRecipientName('');
+    _setAmount('');
+    _setTransferContent('');
+    _setLoading(false);
   }, []);
 
   const contextValue = useMemo(
@@ -65,26 +65,19 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
       setRecipientName,
       amount,
       setAmount,
-      amountText,
-      setAmountText,
       transferContent,
       setTransferContent,
       loading,
       setLoading,
+      clearContext,
     }),
     [
       recipientAccountNumber,
-      setRecipientAccountNumber,
       recipientName,
-      setRecipientName,
       amount,
-      setAmount,
-      amountText,
-      setAmountText,
       transferContent,
-      setTransferContent,
       loading,
-      setLoading,
+      clearContext,
     ]
   );
 

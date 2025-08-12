@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#29557c',
+    color: '#2f5884',
     marginTop: 8,
     fontFamily: 'Roboto',
     textAlign: 'center',
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   anotherTransactionButton: {
     height: 60,
     borderWidth: 1,
-    borderColor: '#29557c',
+    borderColor: '#2f5884',
     borderRadius: 4,
     padding: 16,
     width: '100%',
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   anotherTransactionButtonText: {
     fontSize: 18,
-    color: '#29557c',
+    color: '#2f5884',
     fontWeight: 'bold',
     fontFamily: 'Roboto',
   },
