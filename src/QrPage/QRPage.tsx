@@ -136,9 +136,7 @@ const App = (props: Props) => {
     console.log("🏦 Ngân hàng:", parsed.bankName);
     console.log("🔤 Bank code:", parsed.bankCode);
     console.log("🔢 Số tài khoản:", parsed.accountNumber);
-    console.log("👤 Tên người nhận:", parsed.merchantName);
-    console.log("💰 Số tiền:", parsed.amount ? parsed.amount + " VND" : "Không có");
-    console.log("📝 Nội dung:", parsed.transferContent || "Không có");
+
   };
 
   const handleImageSelection = async (usCheckBase64: boolean) => {
@@ -196,22 +194,22 @@ const App = (props: Props) => {
   // ===== COMPLETELY NEW SMOOTH INFINITE CAROUSEL LOGIC =====
   const translateX = useRef(new Animated.Value(0)).current;
   const itemWidth = 92; // 80px width + 12px margin
-  const COPIES_COUNT = 50;
+  const COPIES_COUNT = 10;
   const infiniteImages = Array(COPIES_COUNT).fill(qrCodeImages).flat();
   const totalWidth = infiniteImages.length * itemWidth;
 
-  useEffect(() => {
-    const infiniteAnimation = Animated.loop(
-      Animated.timing(translateX, {
-        toValue: -totalWidth,
-        duration: infiniteImages.length * 1200,
-        useNativeDriver: true,
-      }),
-      { iterations: -1 }
-    );
-    infiniteAnimation.start();
-    return () => infiniteAnimation.stop();
-  }, []);
+  // useEffect(() => {
+  //   const infiniteAnimation = Animated.loop(
+  //     Animated.timing(translateX, {
+  //       toValue: -totalWidth,
+  //       duration: infiniteImages.length * 1200,
+  //       useNativeDriver: true,
+  //     }),
+  //     { iterations: -1 }
+  //   );
+  //   infiniteAnimation.start();
+  //   return () => infiniteAnimation.stop();
+  // }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -449,7 +447,7 @@ const styles = StyleSheet.create({
 export const optionsImagerLIB: any = {
   selectionLimit: 1, // Giới hạn 1 ảnh để giảm tải
   mediaType: "photo",
-  maxWidth: 800, // Giảm độ phân giải ảnh
-  maxHeight: 800, // Giảm kích thước ảnh để tăng tốc xử lý
+  maxWidth: 600, // Giảm độ phân giải ảnh
+  maxHeight: 600, // Giảm kích thước ảnh để tăng tốc xử lý
   includeBase64: false, // Không chuyển đổi Base64 để tiết kiệm bộ nhớ
 };

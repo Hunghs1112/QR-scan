@@ -30,6 +30,7 @@ const Three: React.FC = () => {
     recipientAccountNumber,
     setRecipientAccountNumber,
     recipientName,
+    setRecipientName,
     transferContent,
     setTransferContent,
     loading,
@@ -42,6 +43,7 @@ const Three: React.FC = () => {
     handleContinue,
     formatVND,
     setSelectedBank,
+    debouncedFetchRecipientInfo,
   } = useThreeLogic();
   const { name } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
@@ -59,6 +61,13 @@ const Three: React.FC = () => {
     if (!digits) return '';
     return parseInt(digits).toLocaleString('en-US', { minimumFractionDigits: 0 });
   }, []);
+
+  // Khi số tài khoản thay đổi -> gọi lại API lấy tên
+  useEffect(() => {
+    if (recipientAccountNumber && selectedBank?.code) {
+      debouncedFetchRecipientInfo(recipientAccountNumber, selectedBank.code);
+    }
+  }, [recipientAccountNumber, selectedBank?.code, debouncedFetchRecipientInfo]);
 
   useEffect(() => {
     setTransferContent(name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
@@ -81,23 +90,21 @@ const Three: React.FC = () => {
     fetchSvg();
   }, [selectedBank]);
 
-const handleAmountChange = useCallback((text: string) => {
-  // Lấy chỉ số
-  const digitsOnly = text.replace(/[^\d]/g, '');
-  setRawAmount(digitsOnly);
+  const handleAmountChange = useCallback((text: string) => {
+    // Lấy chỉ số
+    const digitsOnly = text.replace(/[^\d]/g, '');
+    setRawAmount(digitsOnly);
 
-  // Nếu không có gì thì reset
-  if (!digitsOnly) {
-    setDisplayAmount('');
-    return;
-  }
+    // Nếu không có gì thì reset
+    if (!digitsOnly) {
+      setDisplayAmount('');
+      return;
+    }
 
-  // Format nhưng đảm bảo dấu phẩy cố định (regex chia nhóm 3 số)
-  const formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-  setDisplayAmount(formatted);
-
-}, []);
+    // Format nhưng đảm bảo dấu phẩy cố định (regex chia nhóm 3 số)
+    const formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    setDisplayAmount(formatted);
+  }, []);
 
   const handleContinuePress = useCallback(() => {
     handleContinue(rawAmount, transferContent);
@@ -106,11 +113,12 @@ const handleAmountChange = useCallback((text: string) => {
   const handleBackPress = useCallback(() => {
     setSelectedBank(null);
     setRecipientAccountNumber('');
+    setRecipientName(''); // Clear recipientName to reset debouncedFetchRecipientInfo effect
     setRawAmount('');
     setDisplayAmount('');
     setTransferContent(name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
     navigation.navigate('Payment');
-  }, [navigation, name, setTransferContent, setRecipientAccountNumber, setSelectedBank]);
+  }, [navigation, name, setTransferContent, setRecipientAccountNumber, setRecipientName, setSelectedBank]);
 
   const scrollToInput = useCallback((ref: React.RefObject<any>) => {
     const nodeHandle = findNodeHandle(ref.current);

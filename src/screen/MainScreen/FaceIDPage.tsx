@@ -49,7 +49,7 @@ const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
 const FaceIDPage: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [hasPermission, setHasPermission] = useState<CameraPermissionRequestResult | null>(null);
-  const [checkCamera, setCheckCamera] = useState(true);
+  const [checkCamera, setCheckCamera] = useState(false); // ban đầu tắt cam
   const [isCameraReady, setIsCameraReady] = useState(false);
   const appState = useRef(AppState.currentState);
   const [appStateStatus, setAppStateStatus] = useState(appState.current);
@@ -65,6 +65,7 @@ const FaceIDPage: React.FC = () => {
     setPassword 
   } = useAuth();
 
+  // Xin quyền camera nhưng chưa bật camera ngay
   useEffect(() => {
     (async () => {
       const status = await Camera.requestCameraPermission();
@@ -72,12 +73,17 @@ const FaceIDPage: React.FC = () => {
     })();
   }, []);
 
+  // Delay bật camera để UI render trước
   useEffect(() => {
     if (device) {
-      const timer = setTimeout(() => {
-        setIsCameraReady(true);
-      }, 500);
-      return () => clearTimeout(timer);
+      const timerShowCam = setTimeout(() => {
+        setCheckCamera(true);
+        const timerReady = setTimeout(() => {
+          setIsCameraReady(true);
+        }, 300);
+        return () => clearTimeout(timerReady);
+      }, 300); // UI hiển thị trước 0.5s rồi mới bật camera
+      return () => clearTimeout(timerShowCam);
     }
   }, [device]);
 
@@ -91,7 +97,7 @@ const FaceIDPage: React.FC = () => {
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-login with face scan simulation
+  // Auto-login với face scan giả lập
   useEffect(() => {
     timeoutRef.current = setTimeout(async () => {
       let loginUsername = username;
@@ -224,11 +230,9 @@ const FaceIDPage: React.FC = () => {
   useEffect(() => {
     offset.value = withRepeat(
       withTiming(circumference, {
-        duration: 800,
+        duration: 10000,
         easing: Easing.linear,
       }),
-      -1,
-      false
     );
   }, [circumference]);
 

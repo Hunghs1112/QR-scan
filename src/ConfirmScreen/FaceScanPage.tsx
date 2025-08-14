@@ -12,7 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Feather';
-import { Camera, CameraPermissionRequestResult, useCameraDevices } from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import Svg, { Defs, Mask, Rect, Ellipse } from 'react-native-svg';
 import Animated, {
   useSharedValue,
@@ -37,49 +37,41 @@ type RootStackParamList = {
 };
 
 const { width: deviceWidth, height: deviceHeight } = Dimensions.get('window');
-
-// Animated Ellipse
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
 
 const FaceScanPage: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [hasPermission, setHasPermission] = useState<CameraPermissionRequestResult | null>(null);
   const [checkCamera, setCheckCamera] = useState(true);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const appState = useRef(AppState.currentState);
   const [appStateStatus, setAppStateStatus] = useState(appState.current);
-  const device = useCameraDevices().find(device => device.position === 'front');
 
-  useEffect(() => {
-    (async () => {
-      const status = await Camera.requestCameraPermission();
-      setHasPermission(status);
-    })();
-  }, []);
+  const device = useCameraDevices().find(d => d.position === 'front');
 
+  // Chỉ delay 300ms để bật camera
   useEffect(() => {
     if (device) {
       const timer = setTimeout(() => {
         setIsCameraReady(true);
-      }, 500);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [device]);
 
+  // Tự động chuyển sang "Thành công" sau 3 giây
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Tự động chuyển sang "Thành công" sau 15 giây
   useEffect(() => {
     timeoutRef.current = setTimeout(() => {
       navigation.navigate('Confirm', { success: true });
     }, 3000);
-
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [navigation]);
 
+  // Lắng nghe trạng thái app để pause/resume camera
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
       setAppStateStatus(nextAppState);
     });
     setAppStateStatus(AppState.currentState);
@@ -102,26 +94,16 @@ const FaceScanPage: React.FC = () => {
   const offset = useSharedValue(0);
   useEffect(() => {
     offset.value = withRepeat(
-      withTiming(circumference, {
-        duration: 800,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
+      withTiming(circumference, { duration: 10000, easing: Easing.linear }),
     );
   }, [circumference]);
 
-  const animatedProps1 = useAnimatedProps(() => {
-    return {
-      strokeDashoffset: -(offset.value % circumference),
-    };
-  });
-
-  const animatedProps2 = useAnimatedProps(() => {
-    return {
-      strokeDashoffset: -((offset.value + circumference / 2) % circumference),
-    };
-  });
+  const animatedProps1 = useAnimatedProps(() => ({
+    strokeDashoffset: -(offset.value % circumference),
+  }));
+  const animatedProps2 = useAnimatedProps(() => ({
+    strokeDashoffset: -((offset.value + circumference / 2) % circumference),
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -138,14 +120,7 @@ const FaceScanPage: React.FC = () => {
       </View>
 
       {/* Main camera */}
-      <View
-        style={{
-          height: cameraSectionHeight,
-          width: '100%',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
+      <View style={{ height: cameraSectionHeight, width: '100%', position: 'relative', overflow: 'hidden' }}>
         {device && checkCamera && isCameraReady ? (
           <Camera
             style={{ width: deviceWidth, height: cameraSectionHeight }}
@@ -173,15 +148,8 @@ const FaceScanPage: React.FC = () => {
             </Mask>
           </Defs>
 
-          {/* Background mờ */}
-          <Rect
-            height="100%"
-            width="100%"
-            fill="rgba(154,142,154, 0.9)"
-            mask="url(#mask)"
-          />
+          <Rect height="100%" width="100%" fill="rgba(154,142,154, 0.9)" mask="url(#mask)" />
 
-          {/* Viền oval lớn */}
           <Ellipse
             cx={deviceWidth / 2}
             cy={cameraSectionHeight / 2}
@@ -192,7 +160,6 @@ const FaceScanPage: React.FC = () => {
             fill="transparent"
           />
 
-          {/* 2 đoạn cung oval nhỏ chạy đối xứng */}
           <AnimatedEllipse
             animatedProps={animatedProps1}
             cx={deviceWidth / 2}

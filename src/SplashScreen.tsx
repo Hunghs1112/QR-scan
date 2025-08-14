@@ -45,31 +45,31 @@ const SplashScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
 
   useEffect(() => {
+    console.log('SplashScreen: Current route:', navigation.getState().routes[navigation.getState().index]?.name);
+    console.log('SplashScreen: Auth state:', { isLoading, username, name });
+
     const navigateBasedOnAuth = () => {
       if (!isLoading) {
         if (username && name) {
-          console.log('SplashScreen: User authenticated, navigating to Main');
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Main' }],
-          });
+          console.log('SplashScreen: User authenticated, navigating to Main from:', navigation.getState().routes[navigation.getState().index]?.name);
+          navigation.navigate('Main'); // Changed from reset to navigate
         } else {
-          console.log('SplashScreen: User not authenticated, navigating to Login');
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
+          console.log('SplashScreen: User not authenticated, navigating to Login from:', navigation.getState().routes[navigation.getState().index]?.name);
+          navigation.navigate('Login'); // Changed from reset to navigate
         }
       }
     };
 
     // Delay navigation to show splash screen for at least 1 second
     const timer = setTimeout(() => {
-      console.log('SplashScreen: Checking auth state:', { isLoading, username, name });
+      console.log('SplashScreen: Timer expired, checking auth state:', { isLoading, username, name });
       navigateBasedOnAuth();
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('SplashScreen: Cleaning up timer');
+      clearTimeout(timer);
+    };
   }, [isLoading, username, name, navigation]);
 
   return (

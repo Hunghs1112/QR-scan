@@ -15,22 +15,40 @@ export const useMainLogic = () => {
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('useMainLogic: Checking auth state:', { isAuthenticated, isLoading, username, name, isLoggingOut });
+    console.log('useMainLogic: Checking auth state:', { 
+      isAuthenticated, 
+      isLoading, 
+      username, 
+      name, 
+      isLoggingOut,
+      currentRoute: navigation.getState().routes[navigation.getState().index]?.name 
+    });
     if (isLoggingOut || isLoading) {
+      console.log('useMainLogic: Skipping navigation check due to logout or loading');
       return; // Bỏ qua kiểm tra nếu đang logout hoặc đang tải
     }
-    console.log('useMainLogic: Auth state resolved, navigating based on username and name:', { username, name });
+    const currentRoute = navigation.getState().routes[navigation.getState().index]?.name;
+    console.log('useMainLogic: Auth state resolved, current route:', currentRoute);
     if (!username || !name) {
+      if (currentRoute !== 'Login') {
+        console.log('useMainLogic: Navigating to Login from:', currentRoute);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      }
+    } else if (!isAuthenticated && currentRoute !== 'Login') {
+      console.log('useMainLogic: Navigating to Login due to unauthenticated state from:', currentRoute);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
       });
     }
-  }, [isLoading, username, name, navigation, isLoggingOut]);
+  }, [isLoading, username, name, navigation, isLoggingOut, isAuthenticated]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-      console.log('useMainLogic: Keyboard shown');
+      console.log('useMainLogic: Keyboard shown, current route:', navigation.getState().routes[navigation.getState().index]?.name);
       setKeyboardVisible(true);
       Animated.timing(inputPositionY, {
         toValue: -70,
@@ -40,7 +58,7 @@ export const useMainLogic = () => {
     });
 
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      console.log('useMainLogic: Keyboard hidden');
+      console.log('useMainLogic: Keyboard hidden, current route:', navigation.getState().routes[navigation.getState().index]?.name);
       setKeyboardVisible(false);
       Animated.timing(inputPositionY, {
         toValue: 0,
@@ -54,7 +72,7 @@ export const useMainLogic = () => {
       keyboardDidHideListener.remove();
       keyboardDidShowListener.remove();
     };
-  }, [inputPositionY]);
+  }, [inputPositionY, navigation]);
 
   const handleLogin = async (): Promise<void> => {
     if (!username || !localPassword) {
@@ -77,7 +95,7 @@ export const useMainLogic = () => {
         setPassword(localPassword);
         setIsAuthenticated(true);
 
-        console.log('useMainLogic.handleLogin: Login successful, setting isAuthenticated to true');
+        console.log('useMainLogic.handleLogin: Login successful, navigating to Home from:', navigation.getState().routes[navigation.getState().index]?.name);
         navigation.navigate('Home');
       } else {
         throw new Error(data.message || 'Đăng nhập thất bại');
@@ -117,7 +135,7 @@ export const useMainLogic = () => {
       // Proceed with logout
       await authLogout();
       setLocalPassword('');
-      console.log('useMainLogic.handleLogout: Logout successful');
+      console.log('useMainLogic.handleLogout: Logout successful, navigating to Login from:', navigation.getState().routes[navigation.getState().index]?.name);
     } catch (error) {
       console.error('useMainLogic.handleLogout: Error during logout', error);
       Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.');

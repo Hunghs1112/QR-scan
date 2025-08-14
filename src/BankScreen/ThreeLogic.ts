@@ -113,14 +113,6 @@ export const useThreeLogic = () => {
   );
 
   useEffect(() => {
-    if (recipientAccountNumber && selectedBank?.code) {
-      debouncedFetchRecipientInfo(recipientAccountNumber, selectedBank.code);
-    } else {
-      setRecipientName('');
-    }
-  }, [recipientAccountNumber, selectedBank?.code, debouncedFetchRecipientInfo, setRecipientName]);
-
-  useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       const isNavigatingToConfirm =
         e.data.action.type === 'NAVIGATE' &&
@@ -154,5 +146,6 @@ export const useThreeLogic = () => {
     balance,
     handleContinue,
     formatVND,
+    debouncedFetchRecipientInfo, // xuất thêm để Three dùng
   };
 };
