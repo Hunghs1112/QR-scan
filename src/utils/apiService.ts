@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Config from 'react-native-config';
+import DeviceInfo from 'react-native-device-info';
 
 const api = axios.create({
   baseURL: Config.API_BASE_URL || 'http://51.79.181.161:5000',
@@ -31,7 +32,11 @@ export const getUserImage = async (account_number: string) => {
 
 export const login = async (data: { username: string; password: string }) => {
   try {
-    const response = await api.post('/login', data);
+    const deviceId = await DeviceInfo.getUniqueId();
+    const response = await api.post('/login', {
+      ...data,
+      device_id: deviceId,
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -86,6 +91,21 @@ export const checkBalance = async (account_number: string) => {
       throw new Error(error.response?.data?.message || 'Lỗi kiểm tra số dư');
     }
     throw new Error('Lỗi kiểm tra số dư');
+  }
+};
+
+export const checkSession = async (sessionToken: string, deviceId: string) => {
+  try {
+    const response = await api.post('/check-session', {
+      session_token: sessionToken,
+      device_id: deviceId,
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || 'Lỗi kiểm tra session');
+    }
+    throw new Error('Lỗi kiểm tra session');
   }
 };
 

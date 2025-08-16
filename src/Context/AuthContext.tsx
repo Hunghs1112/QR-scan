@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
+import DeviceInfo from 'react-native-device-info';
+import { checkSession } from '../utils/apiService';
 
 interface AuthContextType {
   username: string;
@@ -53,33 +55,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const storedAuth = await AsyncStorage.getItem('authData');
         if (storedAuth) {
-          const { username, name, account_number, balance } = JSON.parse(storedAuth);
-          setUsername(username || '');
-          setname(name || '');
-          setAccountNumber(account_number || undefined);
-          setBalance(balance !== undefined ? balance : undefined);
-          setIsAuthenticated(true);
+          const { username, name, account_number, balance, password, session_token } = JSON.parse(storedAuth);
+          // Kiểm tra session hợp lệ
+          const deviceId = await DeviceInfo.getUniqueId();
+          const sessionResponse = await checkSession(session_token, deviceId);
+          if (sessionResponse.success) {
+            setUsername(username || '');
+            setname(name || '');
+            setAccountNumber(account_number || undefined);
+            setBalance(balance !== undefined ? balance : undefined);
+            setPassword(password || '');
+            setIsAuthenticated(true);
 
-          // Register FCM token if user is authenticated
-          const authStatus = await messaging().requestPermission({
-            alert: true,
-            badge: true,
-            sound: true,
-            provisional: true,
-          });
-          const enabled =
-            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+            // Register FCM token if user is authenticated
+            const authStatus = await messaging().requestPermission({
+              alert: true,
+              badge: true,
+              sound: true,
+              provisional: true,
+            });
+            const enabled =
+              authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+              authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-          if (enabled && username) {
-            const fcmToken = await messaging().getToken();
-            if (fcmToken) {
-              await sendFcmToken(username, fcmToken);
+            if (enabled && username) {
+              const fcmToken = await messaging().getToken();
+              if (fcmToken) {
+                await sendFcmToken(username, fcmToken);
+              }
             }
+          } else {
+            // Session không hợp lệ, xóa AsyncStorage
+            await AsyncStorage.removeItem('authData');
+            setUsername('');
+            setPassword('');
+            setname('');
+            setAccountNumber(undefined);
+            setBalance(undefined);
+            setIsAuthenticated(false);
           }
         }
       } catch (error) {
         console.error('loadAuthData error:', error);
+        await AsyncStorage.removeItem('authData');
+        setUsername('');
+        setPassword('');
+        setname('');
+        setAccountNumber(undefined);
+        setBalance(undefined);
+        setIsAuthenticated(false);
       } finally {
         setTimeout(() => setIsLoading(false), 100);
       }

@@ -92,6 +92,7 @@ export const useLoginLogic = () => {
       console.log('useLoginLogic: Login response:', {
         success: data.success,
         user: data.user ? { name: data.user.name, account_number: data.user.account_number, balance: data.user.balance } : null,
+        session_token: data.session_token,
         message: data.message,
       });
       if (data.success) {
@@ -109,6 +110,7 @@ export const useLoginLogic = () => {
           account_number: data.user.account_number || undefined,
           balance: data.user.balance !== undefined ? data.user.balance / 100 : undefined,
           isAuthenticated: true,
+          session_token: data.session_token, // Thêm session_token
         };
         await AsyncStorage.setItem('authData', JSON.stringify(authData));
         console.log('useLoginLogic: Saved auth data to AsyncStorage:', authData);

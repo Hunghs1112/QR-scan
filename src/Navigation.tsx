@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import App from './QrPage/QRPage';
 import Two from './PaymentScreen/Two';
 import Three from './BankScreen/Three';
@@ -61,8 +60,7 @@ const AppNavigator: React.FC = () => {
       initialRouteName="SplashScreen"
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
-        animationDuration: 50,
+        animation: 'slide_from_right', // push sang màn mới từ phải sang
         contentStyle: { backgroundColor: '#FFF' },
       }}
     >
