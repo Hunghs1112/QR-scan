@@ -52,10 +52,10 @@ const SplashScreen: React.FC = () => {
       if (!isLoading) {
         if (username && name) {
           console.log('SplashScreen: User authenticated, navigating to Main from:', navigation.getState().routes[navigation.getState().index]?.name);
-          navigation.navigate('Main'); // Changed from reset to navigate
+          navigation.navigate('Main');
         } else {
           console.log('SplashScreen: User not authenticated, navigating to Login from:', navigation.getState().routes[navigation.getState().index]?.name);
-          navigation.navigate('Login'); // Changed from reset to navigate
+          navigation.navigate('Login');
         }
       }
     };

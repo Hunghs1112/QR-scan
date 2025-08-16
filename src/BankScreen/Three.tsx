@@ -117,7 +117,7 @@ const Three: React.FC = () => {
     setRawAmount('');
     setDisplayAmount('');
     setTransferContent(name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
-    navigation.navigate('Payment');
+    navigation.goBack();
   }, [navigation, name, setTransferContent, setRecipientAccountNumber, setRecipientName, setSelectedBank]);
 
   const scrollToInput = useCallback((ref: React.RefObject<any>) => {
