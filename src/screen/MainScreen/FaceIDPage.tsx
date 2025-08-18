@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,15 +13,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Feather';
-import { Camera, CameraPermissionRequestResult, useCameraDevices } from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import Svg, { Defs, Mask, Rect, Ellipse } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withRepeat,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedProps, withRepeat, withTiming, Easing, useDerivedValue } from 'react-native-reanimated';
 import { useAuth } from '../../Context/AuthContext';
 import { login } from '../../utils/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,248 +23,214 @@ import messaging from '@react-native-firebase/messaging';
 
 type RootStackParamList = {
   Login: undefined;
-  Main: undefined;
   Home: undefined;
-  Payment: undefined;
-  Bank: undefined;
-  QRPage: undefined;
-  Bill: undefined;
   Confirm: { success?: boolean };
-  History: undefined;
-  FaceScan: undefined;
   FaceID: undefined;
 };
 
 const { width: deviceWidth, height: deviceHeight } = Dimensions.get('window');
-
-// Animated Ellipse
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
 
 const FaceIDPage: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [hasPermission, setHasPermission] = useState<CameraPermissionRequestResult | null>(null);
-  const [checkCamera, setCheckCamera] = useState(false); // ban đầu tắt cam
+  const [checkCamera, setCheckCamera] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isFirstPhase, setIsFirstPhase] = useState(true);
   const appState = useRef(AppState.currentState);
   const [appStateStatus, setAppStateStatus] = useState(appState.current);
-  const device = useCameraDevices().find((device) => device.position === 'front');
-  const { 
-    username, 
-    password, 
-    setname, 
-    setAccountNumber, 
-    setBalance, 
-    setIsAuthenticated, 
-    setUsername, 
-    setPassword 
-  } = useAuth();
+  const device = useCameraDevices().find((d) => d.position === 'front');
 
-  // Xin quyền camera nhưng chưa bật camera ngay
+  const { username, password, setname, setAccountNumber, setBalance, setIsAuthenticated, setUsername, setPassword } = useAuth();
+
+  // Xin quyền camera
   useEffect(() => {
     (async () => {
       const status = await Camera.requestCameraPermission();
-      setHasPermission(status);
+      if (status !== 'denied') setCheckCamera(true);
     })();
   }, []);
 
-  // Delay bật camera để UI render trước
+  // Bật camera
   useEffect(() => {
-    if (device) {
-      const timerShowCam = setTimeout(() => {
-        setCheckCamera(true);
-        const timerReady = setTimeout(() => {
-          setIsCameraReady(true);
-        }, 300);
-        return () => clearTimeout(timerReady);
-      }, 300); // UI hiển thị trước 0.5s rồi mới bật camera
-      return () => clearTimeout(timerShowCam);
-    }
-  }, [device]);
+    if (!device || !checkCamera) return;
+    const readyTimer = setTimeout(() => setIsCameraReady(true), 300);
+    return () => clearTimeout(readyTimer);
+  }, [device, checkCamera]);
 
+  // AppState
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      setAppStateStatus(nextAppState);
+      if (nextAppState !== appState.current) {
+        appState.current = nextAppState;
+        setAppStateStatus(nextAppState);
+      }
     });
-    setAppStateStatus(AppState.currentState);
     return () => subscription.remove();
   }, []);
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Auto-login với face scan giả lập
+  // Auto-login + phase
   useEffect(() => {
-    timeoutRef.current = setTimeout(async () => {
-      let loginUsername = username;
-      let loginPassword = password;
+    const startTime = Date.now();
+    const interval = setInterval(async () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 2500) setIsFirstPhase(false);
+      if (elapsed > 4000) {
+        clearInterval(interval);
 
-      if (!loginUsername || !loginPassword) {
-        try {
-          const storedAuth = await AsyncStorage.getItem('authData');
-          if (storedAuth) {
-            const authData = JSON.parse(storedAuth);
-            loginUsername = authData.username || loginUsername;
-            loginPassword = authData.password || '';
-            console.log('FaceIDPage: Retrieved credentials from AsyncStorage:', { loginUsername, loginPassword });
+        let loginUsername = username;
+        let loginPassword = password;
+
+        if (!loginUsername || !loginPassword) {
+          try {
+            const storedAuth = await AsyncStorage.getItem('authData');
+            if (storedAuth) {
+              const authData = JSON.parse(storedAuth);
+              loginUsername = authData.username || loginUsername;
+              loginPassword = authData.password || '';
+            }
+          } catch (error) {
+            console.error('Error reading authData:', error);
           }
-        } catch (error) {
-          console.error('FaceIDPage: Error retrieving authData from AsyncStorage:', error);
         }
-      }
 
-      if (!loginUsername || !loginPassword) {
-        console.log('FaceIDPage: Auto-login failed: No credentials found', { loginUsername, loginPassword });
-        Alert.alert('Lỗi', 'Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.');
-        navigation.navigate('Login');
-        return;
-      }
+        if (!loginUsername || !loginPassword) {
+          Alert.alert('Lỗi', 'Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại.');
+          navigation.navigate('Login');
+          return;
+        }
 
-      try {
-        console.log('FaceIDPage: Attempting auto-login with:', { loginUsername });
-        const data = await login({ username: loginUsername, password: loginPassword });
-        console.log('FaceIDPage: Login response:', {
-          success: data.success,
-          user: data.user ? { name: data.user.name, account_number: data.user.account_number, balance: data.user.balance } : null,
-          message: data.message,
-        });
+        try {
+          const data = await login({ username: loginUsername, password: loginPassword });
+          if (data.success) {
+            setname(data.user.name || '');
+            setAccountNumber?.(data.user.account_number);
+            setBalance?.(data.user.balance);
+            setIsAuthenticated(true);
+            setUsername(loginUsername);
+            setPassword(loginPassword);
 
-        if (data.success) {
-          setname(data.user.name || '');
-          setAccountNumber?.(data.user.account_number || undefined);
-          setBalance?.(data.user.balance);
-          setIsAuthenticated(true);
-          setUsername(loginUsername);
-          setPassword(loginPassword);
+            await AsyncStorage.setItem(
+              'authData',
+              JSON.stringify({ username: loginUsername, password: loginPassword, name: data.user.name || '', account_number: data.user.account_number, balance: data.user.balance, isAuthenticated: true })
+            );
 
-          const authData = {
-            username: loginUsername,
-            password: loginPassword,
-            name: data.user.name || '',
-            account_number: data.user.account_number || undefined,
-            balance: data.user.balance !== undefined ? data.user.balance / 100 : undefined,
-            isAuthenticated: true,
-          };
-          await AsyncStorage.setItem('authData', JSON.stringify(authData));
-          console.log('FaceIDPage: Saved auth data to AsyncStorage:', authData);
+            const authStatus = await messaging().requestPermission({ alert: true, badge: true, sound: true, provisional: true });
+            const enabled =
+              authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+              authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-          const authStatus = await messaging().requestPermission({
-            alert: true,
-            badge: true,
-            sound: true,
-            provisional: true,
-          });
-          const enabled =
-            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-          if (enabled && loginUsername) {
-            const fcmToken = await messaging().getToken();
-            if (fcmToken) {
-              try {
-                console.log('FaceIDPage: Sending FCM token to server:', { loginUsername, fcmToken });
-                const response = await fetch('http://51.79.181.161:5000/save-token', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ username: loginUsername, fcmToken }),
-                });
-                const result = await response.json();
-                console.log('FaceIDPage: Save token response:', result);
-                if (!result.success) {
-                  console.warn('FaceIDPage: Failed to save FCM token:', result.message);
+            if (enabled) {
+              const fcmToken = await messaging().getToken();
+              if (fcmToken) {
+                try {
+                  await fetch('http://51.79.181.161:5000/save-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: loginUsername, fcmToken }),
+                  });
+                } catch (error) {
+                  console.error('Error sending FCM token:', error);
                 }
-              } catch (error) {
-                console.error('FaceIDPage: Error sending FCM token:', error);
               }
             }
+
+            navigation.navigate('Home');
+          } else {
+            throw new Error(data.message || 'Đăng nhập thất bại');
           }
-
-          console.log('FaceIDPage: Auto-login successful, navigating to Home');
-          navigation.navigate('Home');
-        } else {
-          throw new Error(data.message || 'Đăng nhập thất bại');
+        } catch (error) {
+          Alert.alert('Lỗi', (error as Error).message || 'Đăng nhập thất bại');
+          navigation.navigate('Login');
         }
-      } catch (error) {
-        console.error('FaceIDPage: Auto-login error:', error);
-        Alert.alert(
-          'Lỗi',
-          (error as Error).message || 'Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập.'
-        );
-        navigation.navigate('Login');
       }
-    }, 3000);
+    }, 100);
 
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [
-    navigation,
-    username,
-    password,
-    setname,
-    setAccountNumber,
-    setBalance,
-    setIsAuthenticated,
-    setUsername,
-    setPassword,
-  ]);
+    return () => clearInterval(interval);
+  }, [navigation, username, password]);
 
+  // Oval animation
   const cameraSectionHeight = deviceHeight * 0.65;
   const outerOvalWidth = 380;
   const outerOvalHeight = 460;
   const scanOvalWidth = outerOvalWidth * 0.92;
   const scanOvalHeight = outerOvalHeight * 0.92;
 
-  // Chu vi ước lượng (Ramanujan)
   const a = scanOvalWidth / 2;
   const b = scanOvalHeight / 2;
   const circumference = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
   const arcLength = circumference * 0.25;
 
-  // Animation offset
   const offset = useSharedValue(0);
   useEffect(() => {
-    offset.value = withRepeat(
-      withTiming(circumference, {
-        duration: 10000,
-        easing: Easing.linear,
-      }),
-    );
+    offset.value = withRepeat(withTiming(circumference, { duration: 10000, easing: Easing.linear }), -1, false);
   }, [circumference]);
 
-  const animatedProps1 = useAnimatedProps(() => {
-    return {
-      strokeDashoffset: -(offset.value % circumference),
-    };
-  });
+  // 2 cung tách nhau bằng derived value
+  const offset1 = useDerivedValue(() => offset.value % circumference);
+  const offset2 = useDerivedValue(() => (offset.value + circumference / 2) % circumference);
 
-  const animatedProps2 = useAnimatedProps(() => {
-    return {
-      strokeDashoffset: -((offset.value + circumference / 2) % circumference),
-    };
-  });
+  const animatedProps1 = useAnimatedProps(() => ({ strokeDashoffset: -offset1.value }));
+  const animatedProps2 = useAnimatedProps(() => ({ strokeDashoffset: -offset2.value }));
+
+  const overlaySvg = useMemo(() => (
+    <Svg height={cameraSectionHeight} width={deviceWidth} style={StyleSheet.absoluteFill}>
+      <Defs>
+        <Mask id="mask" x="0" y="0" height="100%" width="100%">
+          <Rect height="100%" width="100%" fill="white" />
+          <Ellipse cx={deviceWidth / 2} cy={cameraSectionHeight / 2} rx={outerOvalWidth / 2} ry={outerOvalHeight / 2} fill="black" />
+        </Mask>
+      </Defs>
+      <Rect height="100%" width="100%" fill="rgba(154,142,154,0.9)" mask="url(#mask)" />
+      <Ellipse
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={outerOvalWidth / 2}
+        ry={outerOvalHeight / 2}
+        stroke={isFirstPhase ? 'red' : '#141635'}
+        strokeWidth={3}
+        strokeDasharray={isFirstPhase ? '10,10' : ''}
+        fill="transparent"
+      />
+      <AnimatedEllipse
+        animatedProps={animatedProps1}
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={scanOvalWidth / 2}
+        ry={scanOvalHeight / 2}
+        stroke="rgba(0,51,102,0.5)"
+        strokeWidth={9}
+        strokeLinecap="round"
+        strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+        fill="transparent"
+      />
+      <AnimatedEllipse
+        animatedProps={animatedProps2}
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={scanOvalWidth / 2}
+        ry={scanOvalHeight / 2}
+        stroke="rgba(0,51,102,0.5)"
+        strokeWidth={9}
+        strokeLinecap="round"
+        strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+        fill="transparent"
+      />
+    </Svg>
+  ), [isFirstPhase, cameraSectionHeight, arcLength, circumference]);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { height: deviceHeight * 0.15 }]}>
         <Image source={require('../image/logoP1.png')} style={styles.logo} />
-        <TouchableOpacity
-          style={styles.settingsIcon}
-          onPress={() => console.log('Settings icon pressed')}
-        >
+        <TouchableOpacity style={styles.settingsIcon}>
           <Icon name="info" size={24} color="#141635" />
         </TouchableOpacity>
-        <Text style={styles.instructionText}>Mặt đúng vị trí. Giữ vững tay</Text>
+        <Text style={[styles.instructionText, { color: isFirstPhase ? 'red' : '#141635' }]}>
+          {isFirstPhase ? 'Vui lòng đưa mặt vào giữa khung hình' : 'Mặt đúng vị trí. Giữ vững tay'}
+        </Text>
       </View>
 
-      {/* Main camera */}
-      <View
-        style={{
-          height: cameraSectionHeight,
-          width: '100%',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
+      <View style={{ height: cameraSectionHeight, width: '100%', position: 'relative', overflow: 'hidden' }}>
         {device && checkCamera && isCameraReady ? (
           <Camera
             style={{ width: deviceWidth, height: cameraSectionHeight }}
@@ -283,78 +243,13 @@ const FaceIDPage: React.FC = () => {
           <Text style={styles.cameraPlaceholderText}>Đang tải camera...</Text>
         )}
 
-        {/* Overlay */}
-        <Svg height={cameraSectionHeight} width={deviceWidth} style={StyleSheet.absoluteFill}>
-          <Defs>
-            <Mask id="mask" x="0" y="0" height="100%" width="100%">
-              <Rect height="100%" width="100%" fill="white" />
-              <Ellipse
-                cx={deviceWidth / 2}
-                cy={cameraSectionHeight / 2}
-                rx={outerOvalWidth / 2}
-                ry={outerOvalHeight / 2}
-                fill="black"
-              />
-            </Mask>
-          </Defs>
+        {overlaySvg}
 
-          {/* Background mờ */}
-          <Rect
-            height="100%"
-            width="100%"
-            fill="rgba(154,142,154, 0.9)"
-            mask="url(#mask)"
-          />
-
-          {/* Viền oval lớn */}
-          <Ellipse
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={outerOvalWidth / 2}
-            ry={outerOvalHeight / 2}
-            stroke="#141635"
-            strokeWidth={3}
-            fill="transparent"
-          />
-
-          {/* 2 đoạn cung oval nhỏ chạy đối xứng */}
-          <AnimatedEllipse
-            animatedProps={animatedProps1}
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={scanOvalWidth / 2}
-            ry={scanOvalHeight / 2}
-            stroke="rgba(0,51,102, 0.5)"
-            strokeWidth={9}
-            strokeLinecap="round"
-            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
-            fill="transparent"
-          />
-          <AnimatedEllipse
-            animatedProps={animatedProps2}
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={scanOvalWidth / 2}
-            ry={scanOvalHeight / 2}
-            stroke="rgba(0,51,102, 0.5)"
-            strokeWidth={9}
-            strokeLinecap="round"
-            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
-            fill="transparent"
-          />
-        </Svg>
-
-        {/* Logo dưới oval */}
         <View style={styles.labelContainer}>
-          <Image
-            source={require('../image/digiBank.png')}
-            style={styles.labelImage}
-            resizeMode="contain"
-          />
+          <Image source={require('../image/digiBank.png')} style={styles.labelImage} resizeMode="contain" />
         </View>
       </View>
 
-      {/* Footer */}
       <View style={[styles.footer, { height: deviceHeight * 0.2 }]} />
     </SafeAreaView>
   );
@@ -365,31 +260,10 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 20 },
   logo: { width: 120, height: 40, marginTop: 10 },
   settingsIcon: { position: 'absolute', top: 15, right: 20 },
-  instructionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#141635',
-    textAlign: 'center',
-    marginTop: 30,
-  },
-  cameraPlaceholderText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    alignSelf: 'center',
-    marginTop: 20,
-  },
+  instructionText: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 30 },
+  cameraPlaceholderText: { color: '#fff', fontSize: 16, textAlign: 'center', paddingHorizontal: 20, alignSelf: 'center', marginTop: 20 },
   footer: { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  labelContainer: {
-    position: 'absolute',
-    bottom: 20,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(154,142,154, 0.9)',
-    borderRadius: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
+  labelContainer: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: 'rgba(154,142,154,0.9)', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 8 },
   labelImage: { width: 100, height: 30 },
 });
 

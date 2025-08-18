@@ -7,11 +7,17 @@ import { AuthProvider } from './src/Context/AuthContext';
 import { BankProvider } from './src/Context/BankContext';
 import { TransactionProvider } from './src/Context/TransactionContext';
 import { UserProvider } from './src/Context/UserContext';
+import { LoadingProvider } from './src/Context/LoadingContext';
 import Navigation from './src/Navigation';
 import { name as appName } from './app.json';
 
-// Hàm hiển thị thông báo dùng chung
-const showLocalNotification = (remoteMessage: any) => {
+interface RemoteMessage {
+  notification?: { title?: string; body?: string };
+  data?: { [key: string]: any };
+  [key: string]: any;
+}
+
+const showLocalNotification = (remoteMessage: RemoteMessage) => {
   console.log('Calling showLocalNotification with:', remoteMessage);
   PushNotification.localNotification({
     channelId: 'remote-channel',
@@ -20,19 +26,18 @@ const showLocalNotification = (remoteMessage: any) => {
     userInfo: remoteMessage.data || {},
     playSound: true,
     soundName: 'default',
-    importance: 'high',
-    priority: 'high',
+    importance: 'high' as const,
+    priority: 'high' as const,
     vibrate: true,
-    visibility: 'public',
+    visibility: 'public' as const,
   });
 };
 
-// Cấu hình local notification
 PushNotification.configure({
-  onNotification: (notification) => {
+  onNotification: (notification: any) => {
     console.log('Local notification:', notification);
     if (notification.finish) {
-      notification.finish(PushNotificationIOS.FetchResult.NoData); // iOS
+      notification.finish(PushNotificationIOS.FetchResult.NoData);
     }
   },
   permissions: {
@@ -44,7 +49,6 @@ PushNotification.configure({
   requestPermissions: true,
 });
 
-// Tạo channel Android
 PushNotification.createChannel(
   {
     channelId: 'remote-channel',
@@ -57,35 +61,29 @@ PushNotification.createChannel(
   (created) => console.log(`Notification channel created: ${created}`),
 );
 
-// Background / Killed handler
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+messaging().setBackgroundMessageHandler(async (remoteMessage: RemoteMessage) => {
   console.log('FCM background message:', remoteMessage);
   if (!remoteMessage.notification) {
     showLocalNotification(remoteMessage);
   }
 });
 
-const App = () => {
+const App: React.FC = () => {
   useEffect(() => {
-    // Foreground message
-    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+    const unsubscribe = messaging().onMessage(async (remoteMessage: RemoteMessage) => {
       console.log('Foreground FCM message:', remoteMessage);
-      showLocalNotification(remoteMessage); // Luôn gọi showLocalNotification cho mọi message
+      showLocalNotification(remoteMessage);
     });
 
-    // Opened from background
-    messaging().onNotificationOpenedApp((remoteMessage) => {
+    messaging().onNotificationOpenedApp((remoteMessage: RemoteMessage) => {
       console.log('Notification opened from background:', remoteMessage);
-      // TODO: Navigate or handle logic if needed
     });
 
-    // Opened from killed state
     messaging()
       .getInitialNotification()
-      .then((remoteMessage) => {
+      .then((remoteMessage: RemoteMessage | null) => {
         if (remoteMessage) {
           console.log('Notification opened from killed state:', remoteMessage);
-          // TODO: Navigate or handle logic if needed
         }
       });
 
@@ -99,12 +97,16 @@ const App = () => {
       <UserProvider>
         <BankProvider>
           <TransactionProvider>
-            <Navigation />
+            <LoadingProvider>
+              <Navigation />
+            </LoadingProvider>
           </TransactionProvider>
         </BankProvider>
       </UserProvider>
     </AuthProvider>
   );
 };
+
+AppRegistry.registerComponent(appName, () => App);
 
 export default App;

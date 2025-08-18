@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  useDerivedValue,
 } from 'react-native-reanimated';
 
 type RootStackParamList = {
@@ -41,69 +42,129 @@ const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
 
 const FaceScanPage: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [checkCamera, setCheckCamera] = useState(true);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isFirstPhase, setIsFirstPhase] = useState(true);
   const appState = useRef(AppState.currentState);
   const [appStateStatus, setAppStateStatus] = useState(appState.current);
 
   const device = useCameraDevices().find(d => d.position === 'front');
 
-  // Chỉ delay 300ms để bật camera
+  // Delay bật camera
   useEffect(() => {
-    if (device) {
-      const timer = setTimeout(() => {
-        setIsCameraReady(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
+    if (!device) return;
+    const timer = setTimeout(() => setIsCameraReady(true), 300);
+    return () => clearTimeout(timer);
   }, [device]);
 
-  // Tự động chuyển sang "Thành công" sau 3 giây
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Phase và navigation timer gộp
   useEffect(() => {
-    timeoutRef.current = setTimeout(() => {
-      navigation.navigate('Confirm', { success: true });
-    }, 3000);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 2500) setIsFirstPhase(false);
+      if (elapsed > 5000) {
+        navigation.navigate('Confirm', { success: true });
+        clearInterval(timer);
+      }
+    }, 100);
+    return () => clearInterval(timer);
   }, [navigation]);
 
-  // Lắng nghe trạng thái app để pause/resume camera
+  // Lắng nghe trạng thái app
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      setAppStateStatus(nextAppState);
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState !== appState.current) {
+        appState.current = nextAppState;
+        setAppStateStatus(nextAppState);
+      }
     });
-    setAppStateStatus(AppState.currentState);
     return () => subscription.remove();
   }, []);
 
+  // Kích thước camera & oval
   const cameraSectionHeight = deviceHeight * 0.65;
   const outerOvalWidth = 380;
   const outerOvalHeight = 460;
   const scanOvalWidth = outerOvalWidth * 0.92;
   const scanOvalHeight = outerOvalHeight * 0.92;
 
-  // Chu vi ước lượng (Ramanujan)
   const a = scanOvalWidth / 2;
   const b = scanOvalHeight / 2;
   const circumference = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
   const arcLength = circumference * 0.25;
 
-  // Animation offset
+  // Animation offset tối ưu
   const offset = useSharedValue(0);
   useEffect(() => {
     offset.value = withRepeat(
       withTiming(circumference, { duration: 10000, easing: Easing.linear }),
+      -1,
+      false
     );
   }, [circumference]);
 
-  const animatedProps1 = useAnimatedProps(() => ({
-    strokeDashoffset: -(offset.value % circumference),
-  }));
-  const animatedProps2 = useAnimatedProps(() => ({
-    strokeDashoffset: -((offset.value + circumference / 2) % circumference),
-  }));
+  // Dùng derivedValue cho 2 cung, tránh 2 animation riêng
+  const offset1 = useDerivedValue(() => offset.value % circumference);
+  const offset2 = useDerivedValue(() => (offset.value + circumference / 2) % circumference);
+
+  const animatedProps1 = useAnimatedProps(() => ({ strokeDashoffset: -offset1.value }));
+  const animatedProps2 = useAnimatedProps(() => ({ strokeDashoffset: -offset2.value }));
+
+  // Memo hóa overlay SVG
+  const overlaySvg = useMemo(() => (
+    <Svg height={cameraSectionHeight} width={deviceWidth} style={StyleSheet.absoluteFill}>
+      <Defs>
+        <Mask id="mask" x="0" y="0" height="100%" width="100%">
+          <Rect height="100%" width="100%" fill="white" />
+          <Ellipse
+            cx={deviceWidth / 2}
+            cy={cameraSectionHeight / 2}
+            rx={outerOvalWidth / 2}
+            ry={outerOvalHeight / 2}
+            fill="black"
+          />
+        </Mask>
+      </Defs>
+
+      <Rect height="100%" width="100%" fill="rgba(154,142,154, 0.9)" mask="url(#mask)" />
+
+      <Ellipse
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={outerOvalWidth / 2}
+        ry={outerOvalHeight / 2}
+        stroke={isFirstPhase ? 'red' : '#141635'}
+        strokeWidth={3}
+        strokeDasharray={isFirstPhase ? '10,10' : ''}
+        fill="transparent"
+      />
+
+      <AnimatedEllipse
+        animatedProps={animatedProps1}
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={scanOvalWidth / 2}
+        ry={scanOvalHeight / 2}
+        stroke="rgba(0,51,102, 0.5)"
+        strokeWidth={9}
+        strokeLinecap="round"
+        strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+        fill="transparent"
+      />
+      <AnimatedEllipse
+        animatedProps={animatedProps2}
+        cx={deviceWidth / 2}
+        cy={cameraSectionHeight / 2}
+        rx={scanOvalWidth / 2}
+        ry={scanOvalHeight / 2}
+        stroke="rgba(0,51,102, 0.5)"
+        strokeWidth={9}
+        strokeLinecap="round"
+        strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+        fill="transparent"
+      />
+    </Svg>
+  ), [isFirstPhase, cameraSectionHeight, arcLength, circumference]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -116,16 +177,25 @@ const FaceScanPage: React.FC = () => {
         >
           <Icon name="info" size={24} color="#141635" />
         </TouchableOpacity>
-        <Text style={styles.instructionText}>Mặt đúng vị trí. Giữ vững tay</Text>
+        <Text
+          style={[
+            styles.instructionText,
+            { color: isFirstPhase ? 'red' : '#141635' },
+          ]}
+        >
+          {isFirstPhase
+            ? 'Vui lòng đưa mặt vào giữa khung hình'
+            : 'Mặt đúng vị trí. Giữ vững tay'}
+        </Text>
       </View>
 
-      {/* Main camera */}
+      {/* Camera Section */}
       <View style={{ height: cameraSectionHeight, width: '100%', position: 'relative', overflow: 'hidden' }}>
-        {device && checkCamera && isCameraReady ? (
+        {device && isCameraReady && appStateStatus === 'active' ? (
           <Camera
             style={{ width: deviceWidth, height: cameraSectionHeight }}
             device={device}
-            isActive={appStateStatus === 'active'}
+            isActive={true}
             enableZoomGesture
             onError={(error) => console.log('Camera error:', error)}
           />
@@ -134,57 +204,7 @@ const FaceScanPage: React.FC = () => {
         )}
 
         {/* Overlay */}
-        <Svg height={cameraSectionHeight} width={deviceWidth} style={StyleSheet.absoluteFill}>
-          <Defs>
-            <Mask id="mask" x="0" y="0" height="100%" width="100%">
-              <Rect height="100%" width="100%" fill="white" />
-              <Ellipse
-                cx={deviceWidth / 2}
-                cy={cameraSectionHeight / 2}
-                rx={outerOvalWidth / 2}
-                ry={outerOvalHeight / 2}
-                fill="black"
-              />
-            </Mask>
-          </Defs>
-
-          <Rect height="100%" width="100%" fill="rgba(154,142,154, 0.9)" mask="url(#mask)" />
-
-          <Ellipse
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={outerOvalWidth / 2}
-            ry={outerOvalHeight / 2}
-            stroke="#141635"
-            strokeWidth={3}
-            fill="transparent"
-          />
-
-          <AnimatedEllipse
-            animatedProps={animatedProps1}
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={scanOvalWidth / 2}
-            ry={scanOvalHeight / 2}
-            stroke="rgba(0,51,102, 0.5)"
-            strokeWidth={9}
-            strokeLinecap="round"
-            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
-            fill="transparent"
-          />
-          <AnimatedEllipse
-            animatedProps={animatedProps2}
-            cx={deviceWidth / 2}
-            cy={cameraSectionHeight / 2}
-            rx={scanOvalWidth / 2}
-            ry={scanOvalHeight / 2}
-            stroke="rgba(0,51,102, 0.5)"
-            strokeWidth={9}
-            strokeLinecap="round"
-            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
-            fill="transparent"
-          />
-        </Svg>
+        {overlaySvg}
 
         {/* Logo dưới oval */}
         <View style={styles.labelContainer}>
@@ -210,7 +230,6 @@ const styles = StyleSheet.create({
   instructionText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#141635',
     textAlign: 'center',
     marginTop: 30,
   },
