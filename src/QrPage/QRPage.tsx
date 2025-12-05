@@ -1,59 +1,46 @@
-import {
-  AppState,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Animated,
-  Image,
-} from "react-native";
-import { useRef, useState, useEffect } from "react";
-import { launchImageLibrary } from "react-native-image-picker";
-import { decodeQR } from "../screen/Encoding";
-import { scanFromPath } from "react-native-lib-scan-image-code-bank";
-import {
-  Camera,
-  useCameraDevice,
-  useCameraFormat,
-  useCodeScanner,
-} from "react-native-vision-camera";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import { useBank } from "../Context/BankContext";
-import { useTransaction } from "../Context/TransactionContext";
+"use client"
+
+import { AppState, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Animated, Image, Easing } from "react-native"
+import { useRef, useState, useEffect } from "react"
+import { launchImageLibrary } from "react-native-image-picker"
+import { decodeQR } from "../screen/Encoding"
+import { scanFromPath } from "react-native-lib-scan-image-code-bank"
+import { Camera, useCameraDevice, useCameraFormat, useCodeScanner } from "react-native-vision-camera"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import Icon from "react-native-vector-icons/MaterialIcons"
+import { useBank } from "../Context/BankContext"
+import { useTransaction } from "../Context/TransactionContext"
 
 // Define the navigation stack param list
 type RootStackParamList = {
-  Home: undefined;
-  Two: undefined;
-  One: undefined;
+  Home: undefined
+  Two: undefined
+  One: undefined
   Bank: {
-    bankCode: string;
-    accountNumber: string;
-    recipientName?: string;
-    amount?: string;
-    transferContent?: string;
-  };
-  QRPage: undefined;
+    bankCode: string
+    accountNumber: string
+    recipientName?: string
+    amount?: string
+    transferContent?: string
+  }
+  QRPage: undefined
   five: {
-    accountNumber: string;
-    transferContent: string;
-    amount: string;
-    amountText: string;
-    recipientAccountNumber: string;
-    recipientName: string;
-    bankCode: string;
-    bankName: string;
-  };
-};
+    accountNumber: string
+    transferContent: string
+    amount: string
+    amountText: string
+    recipientAccountNumber: string
+    recipientName: string
+    bankCode: string
+    bankName: string
+  }
+}
 
 // Define the navigation prop type
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>
 
-type Props = {};
+type Props = {}
 
 // Placeholder QR code images (using local assets)
 const qrCodeImages = [
@@ -62,60 +49,85 @@ const qrCodeImages = [
   { id: 3, source: require("../screen/image/qr3.jpg") },
   { id: 4, source: require("../screen/image/qr4.jpg") },
   { id: 5, source: require("../screen/image/qr5.jpg") },
-];
+]
 
 const App = (props: Props) => {
-  const device = useCameraDevice("back");
-  const [checkCamera, setCheckCamera] = useState<boolean>(true);
-  const [isCameraReady, setIsCameraReady] = useState<boolean>(false);
-  const appState = useRef(AppState.currentState);
-  const [appStateStatus, setAppStateStatus] = useState(appState.current);
-  const [isScanning, setIsScanning] = useState<boolean>(true);
-  const [light, setLight] = useState<boolean>(false);
-  const navigation = useNavigation<NavigationProp>();
-  const { banks, setSelectedBank } = useBank();
-  const { setRecipientAccountNumber, setRecipientName, setAmount, setTransferContent } = useTransaction();
+  const device = useCameraDevice("back")
+  const [checkCamera, setCheckCamera] = useState<boolean>(true)
+  const [isCameraReady, setIsCameraReady] = useState<boolean>(false)
+  const appState = useRef(AppState.currentState)
+  const [appStateStatus, setAppStateStatus] = useState(appState.current)
+  const [isScanning, setIsScanning] = useState<boolean>(true)
+  const [light, setLight] = useState<boolean>(false)
+  const navigation = useNavigation<NavigationProp>()
+  const { banks, setSelectedBank } = useBank()
+  const { setRecipientAccountNumber, setRecipientName, setAmount, setTransferContent } = useTransaction()
 
   const format = useCameraFormat(device, [
     { videoStabilizationMode: "auto" },
     { photoAspectRatio: 4 / 3 },
     { videoAspectRatio: 4 / 3 },
     { photoResolution: "max" },
-  ]);
+    { videoResolution: "max" },
+    { fps: 30 },
+  ])
 
-  // Trì hoãn hiển thị camera để đảm bảo khởi tạo
+  // Scanning animation
+  const cameraWrapperRef = useRef<View>(null)
+  const [cameraHeight, setCameraHeight] = useState<number>(0)
+  const stripHeight = 80
+  const scanAnim = useRef(new Animated.Value(-stripHeight)).current
+
   useEffect(() => {
-    if (device) {
-      const timer = setTimeout(() => {
-        setIsCameraReady(true);
-        console.log("Camera ready");
-      }, 500); // Đợi 500ms để camera khởi tạo
-      return () => clearTimeout(timer);
+    if (cameraHeight > 0) {
+      const scanCycle = Animated.sequence([
+        Animated.timing(scanAnim, {
+          toValue: cameraHeight,
+          duration: 2000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanAnim, {
+          toValue: -stripHeight,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1000),
+      ])
+      const scanAnimation = Animated.loop(scanCycle)
+      scanAnimation.start()
+      return () => scanAnimation.stop()
     }
-  }, [device]);
+  }, [cameraHeight])
+
+  // Force camera ready for testing
+  useEffect(() => {
+    setIsCameraReady(true)
+    console.log("Camera ready (forced for testing)")
+  }, [])
 
   // Theo dõi trạng thái ứng dụng
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      console.log("AppState changed:", nextAppState);
-      setAppStateStatus(nextAppState);
-    });
-    setAppStateStatus(AppState.currentState);
-    return () => subscription.remove();
-  }, []);
+      console.log("AppState changed:", nextAppState)
+      setAppStateStatus(nextAppState)
+    })
+    setAppStateStatus(AppState.currentState)
+    return () => subscription.remove()
+  }, [])
 
   const handleQRData = (parsed: any) => {
     // Find and set the bank in BankContext
-    const bank = banks.find((b) => b.code === parsed.bankCode);
+    const bank = banks.find((b) => b.code === parsed.bankCode)
     if (bank) {
-      setSelectedBank(bank);
+      setSelectedBank(bank)
     }
 
     // Update TransactionContext with scanned data
-    setRecipientAccountNumber(parsed.accountNumber || "");
-    setRecipientName(parsed.merchantName && parsed.merchantName !== "" ? parsed.merchantName : "");
-    setAmount(parsed.amount && parsed.amount !== "Không có" ? parsed.amount.toString() : "");
-    setTransferContent(parsed.transferContent && parsed.transferContent !== "Không có" ? parsed.transferContent : "");
+    setRecipientAccountNumber(parsed.accountNumber || "")
+    setRecipientName(parsed.merchantName && parsed.merchantName !== "" ? parsed.merchantName : "")
+    setAmount(parsed.amount && parsed.amount !== "Không có" ? parsed.amount.toString() : "")
+    setTransferContent(parsed.transferContent && parsed.transferContent !== "Không có" ? parsed.transferContent : "")
 
     // Prepare navigation parameters
     const navigationParams: RootStackParamList["Bank"] = {
@@ -123,93 +135,93 @@ const App = (props: Props) => {
       accountNumber: parsed.accountNumber || "",
       recipientName: parsed.merchantName && parsed.merchantName !== "" ? parsed.merchantName : undefined,
       amount: parsed.amount && parsed.amount !== "Không có" ? parsed.amount.toString() : undefined,
-      transferContent: parsed.transferContent && parsed.transferContent !== "Không có" ? parsed.transferContent : undefined,
-    };
+      transferContent:
+        parsed.transferContent && parsed.transferContent !== "Không có" ? parsed.transferContent : undefined,
+    }
 
     // Navigate to Bank page
-    navigation.navigate("Bank", navigationParams);
+    navigation.navigate("Bank", navigationParams)
 
     // Log QR data for debugging
-    console.log("✅ Mã QR hợp lệ");
-    console.log("🔢 BIN:", parsed.bin);
-    console.log("🌐 Quốc gia:", parsed.nation);
-    console.log("🏦 Ngân hàng:", parsed.bankName);
-    console.log("🔤 Bank code:", parsed.bankCode);
-    console.log("🔢 Số tài khoản:", parsed.accountNumber);
-
-  };
+    console.log("✅ Mã QR hợp lệ")
+    console.log("🔢 BIN:", parsed.bin)
+    console.log("🌐 Quốc gia:", parsed.nation)
+    console.log("🏦 Ngân hàng:", parsed.bankName)
+    console.log("🔤 Bank code:", parsed.bankCode)
+    console.log("🔢 Số tài khoản:", parsed.accountNumber)
+  }
 
   const handleImageSelection = async (usCheckBase64: boolean) => {
     try {
-      const response = await launchImageLibrary(optionsImagerLIB);
-      console.log("response", response);
+      const response = await launchImageLibrary(optionsImagerLIB)
+      console.log("response", response)
       if (response.didCancel) {
-        return [];
+        return []
       }
       if (response.errorCode) {
-        return [];
+        return []
       }
       if (response?.assets) {
-        const selectedImage = response.assets[0];
-        const imageUri = selectedImage.uri;
+        const selectedImage = response.assets[0]
+        const imageUri = selectedImage.uri
         if (imageUri) {
-          const codes = await scanFromPath(imageUri);
+          const codes = await scanFromPath(imageUri)
           if (!codes?.length) {
-            console.log("Mã QR không hợp lệ!");
-            return [];
+            console.log("Mã QR không hợp lệ!")
+            return []
           }
-          const parsed = decodeQR(codes[0]);
+          const parsed = decodeQR(codes[0])
           if (!parsed.valid) {
-            console.log(parsed.message);
-            return [];
+            console.log(parsed.message)
+            return []
           }
-          handleQRData(parsed);
+          handleQRData(parsed)
         }
       }
     } catch (error) {
-      console.log("Error in handleImageSelection:", error);
+      console.log("Error in handleImageSelection:", error)
     }
-  };
+  }
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr", "ean-13"],
     onCodeScanned: async (codes: any) => {
       if (!isScanning) {
-        return;
+        return
       }
-      const firstCode = codes[0];
-      const codeValue = firstCode?.value;
+      const firstCode = codes[0]
+      const codeValue = firstCode?.value
       if (codeValue) {
         try {
-          const parsed = decodeQR(codeValue);
-          setIsScanning(false);
-          handleQRData(parsed);
+          const parsed = decodeQR(codeValue)
+          setIsScanning(false)
+          handleQRData(parsed)
         } catch (error) {
-          setIsScanning(true);
+          setIsScanning(true)
         }
       }
     },
-  });
+  })
 
   // ===== COMPLETELY NEW SMOOTH INFINITE CAROUSEL LOGIC =====
-  const translateX = useRef(new Animated.Value(0)).current;
-  const itemWidth = 92; // 80px width + 12px margin
-  const COPIES_COUNT = 10;
-  const infiniteImages = Array(COPIES_COUNT).fill(qrCodeImages).flat();
-  const totalWidth = infiniteImages.length * itemWidth;
+  const translateX = useRef(new Animated.Value(0)).current
+  const itemWidth = 92 // 80px width + 12px margin
+  const COPIES_COUNT = 10
+  const infiniteImages = Array(COPIES_COUNT).fill(qrCodeImages).flat()
+  const totalWidth = infiniteImages.length * itemWidth
 
-  // useEffect(() => {
-  //   const infiniteAnimation = Animated.loop(
-  //     Animated.timing(translateX, {
-  //       toValue: -totalWidth,
-  //       duration: infiniteImages.length * 1200,
-  //       useNativeDriver: true,
-  //     }),
-  //     { iterations: -1 }
-  //   );
-  //   infiniteAnimation.start();
-  //   return () => infiniteAnimation.stop();
-  // }, []);
+  useEffect(() => {
+    const infiniteAnimation = Animated.loop(
+      Animated.timing(translateX, {
+        toValue: -totalWidth,
+        duration: infiniteImages.length * 1200,
+        useNativeDriver: true,
+      }),
+      { iterations: -1 }
+    );
+    infiniteAnimation.start();
+    return () => infiniteAnimation.stop();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -222,30 +234,63 @@ const App = (props: Props) => {
           <Text style={styles.headerTitle}>Quét mã QR</Text>
         </View>
         <View style={styles.avatarPlaceholder}>
-          <Image
-            source={require("../screen/image/den.png")}
-            style={styles.buttonImage}
-            resizeMode="contain"
-          />
+          <Image source={require("../screen/image/den.png")} style={styles.buttonImage} resizeMode="contain" />
         </View>
       </View>
 
       {/* Camera Frame */}
-      {device && checkCamera && isCameraReady ? (
-        <View style={styles.cameraWrapper}>
-          <Camera
-            style={styles.camera}
-            device={device}
-            isActive={appStateStatus === "active"}
-            enableZoomGesture
-            {...props}
-            codeScanner={codeScanner}
-            torch={light ? "on" : "off"}
-            fps={30}
-            photoQualityBalance="speed"
-            format={format}
-            onError={(error) => console.log("Camera error:", error)}
-          />
+      {checkCamera && isCameraReady ? (
+        <View 
+          style={styles.cameraWrapper}
+          ref={cameraWrapperRef}
+          onLayout={({ nativeEvent: { layout: { height } } }) => {
+            if (height > 0 && cameraHeight === 0) setCameraHeight(height);
+          }}
+        >
+          {device ? (
+            <Camera
+              style={styles.camera}
+              device={device}
+              isActive={appStateStatus === "active"}
+              enableZoomGesture
+              {...props}
+              codeScanner={codeScanner}
+              torch={light ? "on" : "off"}
+              fps={30}
+              photoQualityBalance="balanced"
+              format={format}
+              onError={(error) => console.log("Camera error:", error)}
+            />
+          ) : (
+            <View style={styles.cameraPlaceholder} />
+          )}
+          {/* Scanning Strip Overlay */}
+          <Animated.View style={[styles.scanStrip, { transform: [{ translateY: scanAnim }] }]}>
+            {[0,1,2,3,4,5,6,7,8,9].map((rowIndex) => (
+              <View key={rowIndex} style={styles.row}>
+                {[...Array(60)].map((_, i) => {
+                  const maxRows = 9
+                  const dotSize = 0.5 + (rowIndex * 6 / maxRows) // Reduced size slightly
+                  if (dotSize > 0) {
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.dot,
+                          {
+                            width: dotSize,
+                            height: dotSize,
+                            borderRadius: dotSize / 2,
+                          },
+                        ]}
+                      />
+                    )
+                  }
+                  return null
+                }).filter(Boolean)}
+              </View>
+            ))}
+          </Animated.View>
         </View>
       ) : (
         <View style={styles.cameraWrapper}>
@@ -271,51 +316,34 @@ const App = (props: Props) => {
       <View style={styles.buttonContainer}>
         <View style={styles.buttonWrapper}>
           <TouchableOpacity style={styles.button}>
-            <Image
-              source={require("../screen/image/nutqr.png")}
-              style={styles.buttonImage1}
-              resizeMode="contain"
-            />
+            <Image source={require("../screen/image/nutqr.png")} style={styles.buttonImage1} resizeMode="contain" />
           </TouchableOpacity>
           <Text style={styles.buttonLabel}>QR của tôi</Text>
         </View>
         <View style={styles.buttonWrapper}>
           <TouchableOpacity style={styles.button} onPress={() => handleImageSelection(false)}>
-            <Image
-              source={require("../screen/image/nutanh.png")}
-              style={styles.buttonImage1}
-              resizeMode="contain"
-            />
+            <Image source={require("../screen/image/nutanh.png")} style={styles.buttonImage1} resizeMode="contain" />
           </TouchableOpacity>
           <Text style={styles.buttonLabel}>Tải ảnh lên</Text>
         </View>
       </View>
-
-      {/* Retry Button */}
-      {!isScanning && (
-        <View style={styles.retryWrapper}>
-          <TouchableOpacity style={styles.retryButton} onPress={() => setIsScanning(true)}>
-            <Text style={styles.retryText}>Quét lại</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
-  );
-};
+  )
+}
 
-export default App;
+export default App
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
     flex: 1,
-    backgroundColor: "#040404", // Light gray background
+    backgroundColor: "#040404",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingTop: 30,
+    paddingHorizontal: 16,
   },
   headerLeft: {
     flexDirection: "row",
@@ -339,24 +367,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cameraWrapper: {
-    width: "100%",
+    width: "88%",
     marginTop: 20,
+    marginHorizontal: 16,
     borderRadius: 8,
     overflow: "hidden",
     borderWidth: 2,
     borderColor: "#97c1d6",
-    aspectRatio: 3 / 4,
+    aspectRatio: 1, // Changed to 1:1 for square camera frame
     alignSelf: "center",
     flex: 0,
+    position: "relative",
   },
   camera: {
     flex: 1,
+  },
+  cameraPlaceholder: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  scanStrip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80, // Increased height for more spacing
+    backgroundColor: "transparent",
+    zIndex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  row: {
+    height: 4,
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    marginBottom: 4,
+  },
+  dot: {
+    backgroundColor: "#fff",
+    opacity: 0.8,
   },
   cameraPlaceholderText: {
     color: "rgba(255, 255, 255, 1)",
     fontSize: 16,
     textAlign: "center",
     paddingHorizontal: 20,
+    marginTop: 6,
   },
   qrCodeLabel: {
     color: "#fff",
@@ -377,11 +433,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   qrCodeItem: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     borderRadius: 6,
     backgroundColor: "#fff",
-    marginRight: 12,
+    marginRight: 20,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -396,7 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     paddingVertical: 16,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 26,
     marginTop: 6,
   },
   buttonWrapper: {
@@ -442,7 +498,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
   },
-});
+})
 
 export const optionsImagerLIB: any = {
   selectionLimit: 1, // Giới hạn 1 ảnh để giảm tải
@@ -450,4 +506,4 @@ export const optionsImagerLIB: any = {
   maxWidth: 600, // Giảm độ phân giải ảnh
   maxHeight: 600, // Giảm kích thước ảnh để tăng tốc xử lý
   includeBase64: false, // Không chuyển đổi Base64 để tiết kiệm bộ nhớ
-};
+}

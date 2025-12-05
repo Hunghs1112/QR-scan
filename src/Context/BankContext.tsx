@@ -61,6 +61,7 @@ export const BankProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         );
 
         setSvgCache(newCache);
+        console.log('SVG Cache:', newCache);
       } catch (error) {
         console.error('Failed to load banks:', error);
       }

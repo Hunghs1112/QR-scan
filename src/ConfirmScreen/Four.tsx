@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, SafeAreaView, ScrollView } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'; // Updated import
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Feather';
 import { useFourLogic } from './FourLogic';
 import { useBank } from '../Context/BankContext';
+import { useLoading } from '../Context/LoadingContext'; // Import useLoading
 import styles from './styles';
 import ConfirmTransferModals from './ConfirmTransferModal';
 
-// Updated RootStackParamList
 type RootStackParamList = {
   Login: undefined;
   Main: undefined;
@@ -24,13 +24,12 @@ type RootStackParamList = {
 
 const ConfirmTransferMain = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, 'Confirm'>>(); // Corrected RouteProp import
+  const route = useRoute<RouteProp<RootStackParamList, 'Confirm'>>();
   const {
     recipientAccountNumber,
     recipientName,
     amount,
     transferContent,
-    transactionLoading,
     selectedBank,
     username,
     account_number,
@@ -38,8 +37,6 @@ const ConfirmTransferMain = () => {
     balance,
     isModalVisible,
     setModalVisible,
-    otpModalVisible,
-    setOtpModalVisible,
     handleConfirm,
     handleOtpConfirm,
     formatVND,
@@ -53,12 +50,13 @@ const ConfirmTransferMain = () => {
     setOtpTimer,
   } = useFourLogic();
   const { banks, renderBankLogo } = useBank();
+  const { isLoading } = useLoading(); // Lấy isLoading từ LoadingContext
 
   // Trigger modal if returning from FaceScanPage with success
   useEffect(() => {
     if (route.params?.success) {
       setModalVisible(true);
-      navigation.setParams({ success: undefined }); // Clear param to prevent re-trigger
+      navigation.setParams({ success: undefined });
     }
   }, [route.params, setModalVisible, navigation]);
 
@@ -71,25 +69,37 @@ const ConfirmTransferMain = () => {
     [transferContent, name]
   );
 
+  // Format tên người nhận: chuyển thành chữ hoa
+  const formatRecipientName = React.useCallback((name: string): string => {
+    if (!name) return 'N/A';
+    return name.toUpperCase();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="chevron-left" size={24} color="#2f5884" style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Xác nhận thông tin</Text>
       </View>
+
+      {/* Nội dung */}
       <ScrollView
         style={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.transactionCard}>
+          {/* Số tiền giao dịch */}
           <View style={styles.transactionBlock}>
             <Text style={styles.title}>Số tiền giao dịch</Text>
             <Text style={styles.amount}>{amount ? `${formatVND(amount)} VND` : '0 VND'}</Text>
             <Text style={styles.subLabel}>{amount ? convertNumberToText(amount) : 'Không đồng'}</Text>
           </View>
+
+          {/* Người chuyển */}
           <View style={styles.infoBlock}>
             <View style={styles.infoRow}>
               <Text style={styles.personLabel}>Người chuyển</Text>
@@ -113,6 +123,8 @@ const ConfirmTransferMain = () => {
               </View>
             </View>
           </View>
+
+          {/* Người nhận */}
           <View style={styles.infoBlock1}>
             <View style={styles.infoRow1}>
               <Text style={styles.personLabel1}>Người nhận</Text>
@@ -128,14 +140,22 @@ const ConfirmTransferMain = () => {
                     />
                   )}
                 </View>
-                <View>
-                  <Text style={styles.infoTextBold1}>{recipientName ? recipientName.toUpperCase() : 'N/A'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text 
+                    style={styles.infoTextBold1} 
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {formatRecipientName(recipientName || '')}
+                  </Text>
                   <Text style={styles.infoText1}>{recipientAccountNumber || 'N/A'}</Text>
                   <Text style={styles.bankNameText1}>{selectedBank?.name || 'Ngân hàng'}</Text>
                 </View>
               </View>
             </View>
           </View>
+
+          {/* Nội dung khác */}
           <View style={styles.infoBlock2}>
             <View style={styles.infoRow3}>
               <Text style={styles.label}>Nội dung chuyển khoản</Text>
@@ -151,6 +171,8 @@ const ConfirmTransferMain = () => {
             </View>
           </View>
         </View>
+
+        {/* Cảnh báo */}
         <View style={styles.warningBox}>
           <Image source={require('../screen/image/warn.png')} style={styles.warningIcon} resizeMode="contain" />
           <Text style={styles.warningText}>
@@ -158,29 +180,31 @@ const ConfirmTransferMain = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Nút xác nhận */}
       <View style={styles.buttonContainerWrapper}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, isLoading && { opacity: 0.6 }]} // Thêm hiệu ứng mờ khi loading
             onPress={() => navigation.goBack()}
-            disabled={transactionLoading}
+            disabled={isLoading} // Sử dụng isLoading thay vì transactionLoading
           >
             <Text style={styles.backButtonText}>Quay lại</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.confirmButton]}
+            style={[styles.confirmButton, isLoading && { opacity: 0.6 }]} // Thêm hiệu ứng mờ khi loading
             onPress={handleConfirm}
-            disabled={transactionLoading}
+            disabled={isLoading} // Sử dụng isLoading thay vì transactionLoading
           >
             <Text style={styles.confirmButtonText}>Xác nhận</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal Xác thực (PIN -> OTP) */}
       <ConfirmTransferModals
         isModalVisible={isModalVisible}
         setModalVisible={setModalVisible}
-        otpModalVisible={otpModalVisible}
-        setOtpModalVisible={setOtpModalVisible}
         handleOtpConfirm={handleOtpConfirm}
         otpLoading={otpLoading}
         otp={otp}

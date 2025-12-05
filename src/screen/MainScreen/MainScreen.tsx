@@ -9,16 +9,16 @@ import { Footer } from "./Footer";
 
 const MainScreen: React.FC = () => {
   return (
+    <ImageBackground source={IMAGES.background} style={styles.background}>
     <SafeAreaView style={{ flex: 1 }}>
-      <ImageBackground source={IMAGES.background} style={styles.background}>
         <SafeAreaView style={styles.safeArea}>
           <Header />
           <MainCard />
           <Features />
           <Footer />
         </SafeAreaView>
-      </ImageBackground>
     </SafeAreaView>
+     </ImageBackground>
   );
 };
 

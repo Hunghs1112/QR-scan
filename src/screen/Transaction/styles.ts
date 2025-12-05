@@ -132,4 +132,9 @@ export const styles = StyleSheet.create({
     marginTop: 30,
     fontWeight: "500",
   },
+  transactionDivider: {
+    height: 1,
+    backgroundColor: "#E5E5E5",
+    marginHorizontal: 15,
+  },
 })

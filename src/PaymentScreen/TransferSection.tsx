@@ -39,12 +39,12 @@ const TransferSection = () => {
       </View>
       <View style={styles.bottomOptions}>
         <TouchableOpacity style={styles.doubleWidthOption}>
-          <Image style={styles.optionImage}   source={require('../screen/image/xu1.png')}
+          <Image style={styles.optionImage}   source={require('../screen/image/xu1.jpg')}
                     resizeMode="contain"/>
           <Text style={styles.optionText1}>Truy vấn giao dịch giá trị lớn</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.optionBox}>
-           <Image style={styles.optionImage}   source={require('../screen/image/hand.png')}
+           <Image style={styles.optionImage}   source={require('../screen/image/hand.jpg')}
                     resizeMode="contain"/>
           <Text style={styles.optionText}>Ví điện tử & Đối tác</Text>
         </TouchableOpacity>

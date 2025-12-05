@@ -14,10 +14,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderBottomWidth: 0.2,
     borderColor: '#d9def2',
-    shadowColor: 'gray',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
     width: '100%',
   },
   backIcon: {
@@ -146,6 +142,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1b313e',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   bankNameText: {
     fontSize: 16,

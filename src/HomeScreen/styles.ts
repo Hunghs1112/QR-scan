@@ -15,6 +15,20 @@ export const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
   },
+   dailyInterestContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+    gap: 2,
+  },
+  dailyInterestText: {
+    color: "#9CA3AF",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -341,7 +355,7 @@ export const styles = StyleSheet.create({
     padding: 5,
   },
   balanceAmount: {
-    marginTop: 12,
+    marginTop: 0,
     marginLeft: 2,
     color: "#fff",
     fontSize: 18,

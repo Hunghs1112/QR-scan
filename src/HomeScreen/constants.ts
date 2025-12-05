@@ -36,4 +36,5 @@ export const IMAGES = {
   gridIcon8: require("../screen/image/90.png"),
   overlayTienGui: require("../screen/image/tl.png"),
   overlayVayNhanh: require("../screen/image/ng.png"),
+  gifIcon: require("../screen/image/icon.gif"),
 };

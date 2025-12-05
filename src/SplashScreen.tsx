@@ -27,11 +27,12 @@ const { width, height } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+      justifyContent: 'center',
+    alignItems: 'center',
   },
   background: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  
   },
   logo: {
     width: 350,
@@ -73,11 +74,13 @@ const SplashScreen: React.FC = () => {
   }, [isLoading, username, name, navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
       <ImageBackground source={require('./screen/image/backx.png')} style={styles.background}>
+    <SafeAreaView style={styles.container}>
+    
         <Image source={require('./screen/image/logoP.png')} style={styles.logo} />
-      </ImageBackground>
+    
     </SafeAreaView>
+      </ImageBackground>
   );
 };
 

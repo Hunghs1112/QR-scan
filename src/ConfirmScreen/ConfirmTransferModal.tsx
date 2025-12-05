@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions, Keyboard } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Animated, Dimensions, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import Modal from 'react-native-modal';
 import { pinModalStyles, otpModalStyles } from './ModalStyles';
 import { PanResponder } from 'react-native';
@@ -12,23 +12,19 @@ const SWIPE_THRESHOLD = 100;
 type ConfirmTransferModalsProps = {
   isModalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
-  otpModalVisible: boolean;
-  setOtpModalVisible: (visible: boolean) => void;
   handleOtpConfirm: () => void;
   otpLoading: boolean;
   otp: string;
   digitalOtp: string;
   handleOtpInput: (text: string) => void;
   otpTimer: number;
-  setDigitalOtp: (value: string) => void; // Added to fix missing setDigitalOtp
-  setOtpTimer: (value: number) => void; // Added to fix missing setOtpTimer
+  setDigitalOtp: (value: string) => void;
+  setOtpTimer: (value: number) => void;
 };
 
 const ConfirmTransferModals = forwardRef(({
   isModalVisible,
   setModalVisible,
-  otpModalVisible,
-  setOtpModalVisible,
   handleOtpConfirm,
   otpLoading,
   otp,
@@ -40,39 +36,31 @@ const ConfirmTransferModals = forwardRef(({
 }: ConfirmTransferModalsProps, ref) => {
   const inputRef = useRef<TextInput>(null);
   const [isPinComplete, setIsPinComplete] = useState(false);
+  const [step, setStep] = useState<'PIN' | 'OTP'>('PIN');
 
-  const pinTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const pinOpacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
-  const otpTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const otpOpacity = useRef(new Animated.Value(0)).current;
-
-  // Reset PIN khi đóng modal
+  // Reset state khi đóng modal
   useEffect(() => {
     if (!isModalVisible) {
       handleOtpInput('');
       setIsPinComplete(false);
+      setStep('PIN');
     }
   }, [isModalVisible, handleOtpInput]);
 
-  useEffect(() => {
-    if (!otpModalVisible) {
-      handleOtpInput('');
-      setIsPinComplete(false);
-    }
-  }, [otpModalVisible, handleOtpInput]);
-
-  // Hiệu ứng mở/đóng modal PIN
+  // Hiệu ứng mở/đóng modal
   useEffect(() => {
     if (isModalVisible) {
       Animated.parallel([
-        Animated.spring(pinTranslateY, {
+        Animated.spring(translateY, {
           toValue: 0,
           tension: 65,
           friction: 11,
           useNativeDriver: true,
         }),
-        Animated.timing(pinOpacity, {
+        Animated.timing(opacity, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
@@ -80,12 +68,12 @@ const ConfirmTransferModals = forwardRef(({
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(pinTranslateY, {
+        Animated.timing(translateY, {
           toValue: SCREEN_HEIGHT,
           duration: 300,
           useNativeDriver: true,
         }),
-        Animated.timing(pinOpacity, {
+        Animated.timing(opacity, {
           toValue: 0,
           duration: 200,
           useNativeDriver: true,
@@ -94,57 +82,25 @@ const ConfirmTransferModals = forwardRef(({
     }
   }, [isModalVisible]);
 
-  // Hiệu ứng mở/đóng modal OTP
-  useEffect(() => {
-    if (otpModalVisible) {
-      Animated.parallel([
-        Animated.spring(otpTranslateY, {
-          toValue: 0,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-        Animated.timing(otpOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(otpTranslateY, {
-          toValue: SCREEN_HEIGHT,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(otpOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [otpModalVisible]);
-
-  const pinPanResponder = useRef(
+  const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy >= 0,
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
-          pinTranslateY.setValue(gestureState.dy);
-          pinOpacity.setValue(1 - gestureState.dy / PIN_MODAL_HEIGHT);
+          translateY.setValue(gestureState.dy);
+          opacity.setValue(1 - gestureState.dy / (step === 'PIN' ? PIN_MODAL_HEIGHT : OTP_MODAL_HEIGHT));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > SWIPE_THRESHOLD) {
           Animated.parallel([
-            Animated.timing(pinTranslateY, {
+            Animated.timing(translateY, {
               toValue: SCREEN_HEIGHT,
               duration: 200,
               useNativeDriver: true,
             }),
-            Animated.timing(pinOpacity, {
+            Animated.timing(opacity, {
               toValue: 0,
               duration: 200,
               useNativeDriver: true,
@@ -152,56 +108,13 @@ const ConfirmTransferModals = forwardRef(({
           ]).start(() => setModalVisible(false));
         } else {
           Animated.parallel([
-            Animated.spring(pinTranslateY, {
+            Animated.spring(translateY, {
               toValue: 0,
               tension: 65,
               friction: 11,
               useNativeDriver: true,
             }),
-            Animated.timing(pinOpacity, {
-              toValue: 1,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        }
-      },
-    })
-  ).current;
-
-  const otpPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy >= 0,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          otpTranslateY.setValue(gestureState.dy);
-          otpOpacity.setValue(1 - gestureState.dy / OTP_MODAL_HEIGHT);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SWIPE_THRESHOLD) {
-          Animated.parallel([
-            Animated.timing(otpTranslateY, {
-              toValue: SCREEN_HEIGHT,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(otpOpacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(() => setOtpModalVisible(false));
-        } else {
-          Animated.parallel([
-            Animated.spring(otpTranslateY, {
-              toValue: 0,
-              tension: 65,
-              friction: 11,
-              useNativeDriver: true,
-            }),
-            Animated.timing(otpOpacity, {
+            Animated.timing(opacity, {
               toValue: 1,
               duration: 200,
               useNativeDriver: true,
@@ -213,114 +126,110 @@ const ConfirmTransferModals = forwardRef(({
   ).current;
 
   const handlePinInput = (text: string) => {
-    if (isPinComplete) return; // Ngăn nhập thêm nếu đã đủ 6 chữ số
+    if (isPinComplete) return;
     const formatted = text.replace(/[^0-9]/g, '').slice(0, 6);
     handleOtpInput(formatted);
     if (formatted.length === 6) {
       setIsPinComplete(true);
       setDigitalOtp('76759528');
-      setOtpModalVisible(true);
       setOtpTimer(100);
       Keyboard.dismiss();
+      setStep('OTP'); // Chuyển step ngay khi nhập đủ PIN
     }
   };
 
   return (
-    <>
-      <Modal
-        isVisible={isModalVisible}
-        onBackdropPress={() => setModalVisible(false)}
-        style={pinModalStyles.modal}
-        backdropOpacity={0.5}
-        deviceHeight={SCREEN_HEIGHT}
-        propagateSwipe
+    <Modal
+      isVisible={isModalVisible}
+      onBackdropPress={() => setModalVisible(false)}
+      style={step === 'PIN' ? pinModalStyles.modal : otpModalStyles.modal}
+      backdropOpacity={0.5}
+      deviceHeight={SCREEN_HEIGHT}
+      propagateSwipe
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, justifyContent: 'flex-end' }}
       >
         <Animated.View
           style={[
-            pinModalStyles.modalContent,
-            { transform: [{ translateY: pinTranslateY }], height: PIN_MODAL_HEIGHT, opacity: pinOpacity },
+            step === 'PIN' ? pinModalStyles.modalContent : otpModalStyles.modalContent,
+            {
+              transform: [{ translateY }],
+              height: step === 'PIN' ? PIN_MODAL_HEIGHT : OTP_MODAL_HEIGHT,
+              opacity,
+            },
           ]}
-          {...pinPanResponder.panHandlers}
+          {...panResponder.panHandlers}
         >
-          <View style={pinModalStyles.dragHandle} />
-          <Text style={pinModalStyles.modalTitle}>Xác thực Digital OTP</Text>
-          <Text style={pinModalStyles.modalDescription}>
-            Vui lòng nhập mã <Text style={pinModalStyles.modalDescriptionBold}>PIN Digital OTP</Text> để nhận mã xác thực giao dịch
-          </Text>
-          <View style={pinModalStyles.pinInputContainer}>
-            {Array(6).fill(0).map((_, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  if (!isPinComplete) {
-                    inputRef.current?.focus();
-                  }
-                }}
-                style={[
-                  pinModalStyles.pinCircle,
-                  index < otp.length && pinModalStyles.pinCircleFilled,
-                ]}
-              />
-            ))}
-            <TextInput
-              ref={inputRef}
-              style={pinModalStyles.minimalInput}
-              maxLength={6}
-              keyboardType="numeric"
-              value={otp}
-              onChangeText={handlePinInput}
-              showSoftInputOnFocus={true}
-              editable={!isPinComplete} // Vô hiệu hóa nhập liệu khi PIN hoàn tất
-            />
-          </View>
-          <TouchableOpacity style={pinModalStyles.resetButton}>
-            <Text style={pinModalStyles.resetButtonText}>Đặt lại mã PIN</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Modal>
-
-      <Modal
-        isVisible={otpModalVisible}
-        onBackdropPress={() => setOtpModalVisible(false)}
-        style={otpModalStyles.modal}
-        backdropOpacity={0.5}
-        deviceHeight={SCREEN_HEIGHT}
-        propagateSwipe
-      >
-        <Animated.View
-          style={[
-            otpModalStyles.modalContent,
-            { transform: [{ translateY: otpTranslateY }], height: OTP_MODAL_HEIGHT, opacity: otpOpacity },
-          ]}
-          {...otpPanResponder.panHandlers}
-        >
-          <View style={otpModalStyles.dragHandle} />
-          <View style={otpModalStyles.contentWrapper}>
-            <Text style={otpModalStyles.modalTitle}>Xác thực Digital OTP</Text>
-            <Text style={otpModalStyles.otpLabel}>Mã xác thực</Text>
-            <View style={otpModalStyles.otpContainer}>
-              {digitalOtp.split('').map((digit, index) => (
-                <Text key={index} style={otpModalStyles.otpDigit}>
-                  {digit}
+          {step === 'PIN' ? (
+            <>
+              <View style={pinModalStyles.dragHandle} />
+              <Text style={pinModalStyles.modalTitle}>Xác thực Digital OTP</Text>
+              <Text style={pinModalStyles.modalDescription}>
+                Vui lòng nhập mã <Text style={pinModalStyles.modalDescriptionBold}>PIN Digital OTP</Text> để nhận mã xác thực giao dịch
+              </Text>
+              <View style={pinModalStyles.pinInputContainer}>
+                {Array(6).fill(0).map((_, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      if (!isPinComplete) {
+                        inputRef.current?.focus();
+                      }
+                    }}
+                    style={[
+                      pinModalStyles.pinCircle,
+                      index < otp.length && pinModalStyles.pinCircleFilled,
+                    ]}
+                  />
+                ))}
+                <TextInput
+                  ref={inputRef}
+                  style={pinModalStyles.minimalInput}
+                  maxLength={6}
+                  keyboardType="numeric"
+                  value={otp}
+                  onChangeText={handlePinInput}
+                  showSoftInputOnFocus={true}
+                  editable={!isPinComplete}
+                />
+              </View>
+              <TouchableOpacity style={pinModalStyles.resetButton}>
+                <Text style={pinModalStyles.resetButtonText}>Đặt lại mã PIN</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={otpModalStyles.dragHandle} />
+              <View style={otpModalStyles.contentWrapper}>
+                <Text style={otpModalStyles.modalTitle}>Xác thực Digital OTP</Text>
+                <Text style={otpModalStyles.otpLabel}>Mã xác thực</Text>
+                <View style={otpModalStyles.otpContainer}>
+                  {digitalOtp.split('').map((digit, index) => (
+                    <Text key={index} style={otpModalStyles.otpDigit}>
+                      {digit}
+                    </Text>
+                  ))}
+                </View>
+                <Text style={otpModalStyles.otpTimer}>
+                  Mã xác thực giao dịch (OTP) có hiệu lực trong vòng{' '}
+                  <Text style={otpModalStyles.otpTimerHighlight}>{otpTimer} giây</Text>
                 </Text>
-              ))}
-            </View>
-            <Text style={otpModalStyles.otpTimer}>
-              Mã xác thực giao dịch (OTP) có hiệu lực trong vòng{' '}
-              <Text style={otpModalStyles.otpTimerHighlight}>{otpTimer} giây</Text>
-            </Text>
-            <Text style={otpModalStyles.autoFillText}>Bấm Xác thực để tự động điền mã</Text>
-          </View>
-          <TouchableOpacity
-            style={[otpModalStyles.confirmButton, otpLoading && { opacity: 0.6 }]}
-            onPress={handleOtpConfirm}
-            disabled={otpLoading}
-          >
-            <Text style={otpModalStyles.confirmButtonText}>Xác thực</Text>
-          </TouchableOpacity>
+                <Text style={otpModalStyles.autoFillText}>Bấm Xác thực để tự động điền mã</Text>
+              </View>
+              <TouchableOpacity
+                style={[otpModalStyles.confirmButton, otpLoading && { opacity: 0.6 }]}
+                onPress={handleOtpConfirm}
+                disabled={otpLoading}
+              >
+                <Text style={otpModalStyles.confirmButtonText}>Xác thực</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Animated.View>
-      </Modal>
-    </>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 });
 

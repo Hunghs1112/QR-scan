@@ -32,6 +32,12 @@ const TransactionSuccess = () => {
     return num > 0 ? num.toLocaleString('en-US') : '0';
   };
 
+  // Format tên người nhận: chuyển thành chữ hoa
+  const formatRecipientName = (name: string): string => {
+    if (!name) return '';
+    return name.toUpperCase();
+  };
+
   const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' – ' + new Date().toLocaleDateString('vi-VN');
 
   const handleBackPress = () => {
@@ -47,7 +53,7 @@ const TransactionSuccess = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f2f7fd', }}>
       <View style={styles.container}>
         <TouchableOpacity
           style={styles.homeButton}
@@ -61,7 +67,13 @@ const TransactionSuccess = () => {
         <Text style={styles.dateTimeText}>{formattedTime}</Text>
         <Icon name="angle-double-down" size={24} color="#1B313E" style={styles.arrowDownIcon} />
         <View style={styles.transactionBox}>
-          <Text style={styles.recipientName}>{recipientName ? recipientName.toUpperCase() : ''}</Text>
+          <Text 
+            style={styles.recipientName}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {formatRecipientName(recipientName || '')}
+          </Text>
           <View style={styles.bankInfoRow}>
             {renderBankLogo(selectedBank?.id, 36, 36, styles.bankIcon)}
             <Text style={styles.bankText}>{selectedBank?.short_name || 'Ngân hàng'}</Text>

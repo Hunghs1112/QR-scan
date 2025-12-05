@@ -23,6 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
+    
     const loadAuthData = async () => {
       try {
         const storedAuth = await AsyncStorage.getItem('authData');

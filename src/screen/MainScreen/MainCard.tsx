@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity, Animated, Image } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Animated, Image, GestureResponderEvent } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { styles } from "./styles";
 import { IMAGES } from "./constants";
@@ -8,7 +8,7 @@ import { useAuth } from "../../Context/AuthContext";
 import type { NavigationProp } from "./types";
 
 export const MainCard: React.FC = () => {
-  const { name, localPassword, setLocalPassword, inputPositionY, handleLogin, handleLogout } = useMainLogic();
+  const { name, localPassword, setLocalPassword, inputPositionY, handleLogin, handleLogout, handleFaceID } = useMainLogic();
   const { logout } = useAuth(); // Kept for compatibility, but not used
   const navigation = useNavigation<NavigationProp>();
 
@@ -47,7 +47,7 @@ export const MainCard: React.FC = () => {
           </View>
           <TouchableOpacity 
             style={styles.faceIdButton}
-            onPress={() => navigation.navigate('FaceID')}
+            onPress={handleFaceID} // Calls handleFaceID from useMainLogic
           >
             <Image source={IMAGES.face} style={styles.iconImage} />
           </TouchableOpacity>
@@ -70,7 +70,10 @@ export const MainCard: React.FC = () => {
             <Text style={styles.actionLink}>Quên mật khẩu?</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={() => handleLogin()} // Wrap handleLogin to match onPress type
+        >
           <Text style={styles.loginButtonText}>Đăng nhập</Text>
         </TouchableOpacity>
       </Animated.View>

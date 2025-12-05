@@ -11,7 +11,7 @@ const IsLoading: React.FC<IsLoadingProps> = ({ visible = false }) => {
   return (
     <View style={styles.overlay}>
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#FF0000" />
       </View>
     </View>
   );
@@ -20,13 +20,13 @@ const IsLoading: React.FC<IsLoadingProps> = ({ visible = false }) => {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.8)', // Opacity đổi thành 0.8
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   loader: {
-    backgroundColor: 'white',
+    backgroundColor: 'black', // Khung đổi từ trắng thành đen
     padding: 20,
     borderRadius: 10,
     elevation: 5,

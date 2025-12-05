@@ -1,112 +1,108 @@
 import React, { useEffect } from 'react';
 import messaging from '@react-native-firebase/messaging';
 import PushNotification from 'react-native-push-notification';
-import { AppRegistry } from 'react-native';
-import { PushNotificationIOS } from 'react-native';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import { AuthProvider } from './src/Context/AuthContext';
 import { BankProvider } from './src/Context/BankContext';
 import { TransactionProvider } from './src/Context/TransactionContext';
 import { UserProvider } from './src/Context/UserContext';
-import { LoadingProvider } from './src/Context/LoadingContext';
+import { LoadingProvider, useLoading } from './src/Context/LoadingContext'; // Import LoadingProvider
 import Navigation from './src/Navigation';
-import { name as appName } from './app.json';
+import IsLoading from './src/isLoading'; // Import IsLoading component
 
-interface RemoteMessage {
-  notification?: { title?: string; body?: string };
-  data?: { [key: string]: any };
-  [key: string]: any;
-}
-
-const showLocalNotification = (remoteMessage: RemoteMessage) => {
-  console.log('Calling showLocalNotification with:', remoteMessage);
-  PushNotification.localNotification({
-    channelId: 'remote-channel',
-    title: remoteMessage?.notification?.title || remoteMessage?.data?.title || 'Thông báo',
-    message: remoteMessage?.notification?.body || remoteMessage?.data?.body || 'Bạn có thông báo mới',
-    userInfo: remoteMessage.data || {},
-    playSound: true,
-    soundName: 'default',
-    importance: 'high' as const,
-    priority: 'high' as const,
-    vibrate: true,
-    visibility: 'public' as const,
-  });
-};
-
-PushNotification.configure({
-  onNotification: (notification: any) => {
-    console.log('Local notification:', notification);
-    if (notification.finish) {
-      notification.finish(PushNotificationIOS.FetchResult.NoData);
+/**
+ * Custom hook để cấu hình FCM + Local Notification cho iOS & Android
+ */
+const useNotifications = () => {
+  // Hàm hiển thị Local Notification cho iOS
+  const showLocalNotificationIOS = async (remoteMessage: any) => {
+    try {
+      await PushNotificationIOS.addNotificationRequest({
+        id: new Date().getTime().toString(),
+        title:
+          remoteMessage?.notification?.title ||
+          remoteMessage?.data?.title ||
+          'Thông báo',
+        body:
+          remoteMessage?.notification?.body ||
+          remoteMessage?.data?.body ||
+          'Bạn có thông báo mới',
+        userInfo: remoteMessage?.data || {},
+        sound: 'default',
+      });
+      console.log('iOS Local Notification Sent ✅');
+    } catch (error) {
+      console.error('Error sending iOS local notification:', error);
     }
-  },
-  permissions: {
-    alert: true,
-    badge: true,
-    sound: true,
-  },
-  popInitialNotification: true,
-  requestPermissions: true,
-});
+  };
 
-PushNotification.createChannel(
-  {
-    channelId: 'remote-channel',
-    channelName: 'Remote Notifications',
-    channelDescription: 'Channel for remote FCM notifications',
-    importance: 4,
-    vibrate: true,
-    soundName: 'default',
-  },
-  (created) => console.log(`Notification channel created: ${created}`),
-);
-
-messaging().setBackgroundMessageHandler(async (remoteMessage: RemoteMessage) => {
-  console.log('FCM background message:', remoteMessage);
-  if (!remoteMessage.notification) {
-    showLocalNotification(remoteMessage);
-  }
-});
-
-const App: React.FC = () => {
+  // Cấu hình local notification cho Android
   useEffect(() => {
-    const unsubscribe = messaging().onMessage(async (remoteMessage: RemoteMessage) => {
+    PushNotification.configure({
+      onNotification: (notification) => {
+        console.log('Local notification:', notification);
+        if (notification.finish) {
+          notification.finish(PushNotificationIOS.FetchResult.NoData);
+        }
+      },
+      permissions: {
+        alert: true,
+        badge: true,
+        sound: true,
+      },
+      popInitialNotification: true,
+      requestPermissions: true,
+    });
+  }, []);
+
+  // Lắng nghe tin nhắn từ FCM
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
       console.log('Foreground FCM message:', remoteMessage);
-      showLocalNotification(remoteMessage);
+      showLocalNotificationIOS(remoteMessage);
     });
 
-    messaging().onNotificationOpenedApp((remoteMessage: RemoteMessage) => {
+    messaging().onNotificationOpenedApp((remoteMessage) => {
       console.log('Notification opened from background:', remoteMessage);
     });
 
     messaging()
       .getInitialNotification()
-      .then((remoteMessage: RemoteMessage | null) => {
+      .then((remoteMessage) => {
         if (remoteMessage) {
           console.log('Notification opened from killed state:', remoteMessage);
         }
       });
 
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log('FCM background message:', remoteMessage);
+      showLocalNotificationIOS(remoteMessage);
+    });
+
     return () => {
       unsubscribe();
     };
   }, []);
-
-  return (
-    <AuthProvider>
-      <UserProvider>
-        <BankProvider>
-          <TransactionProvider>
-            <LoadingProvider>
-              <Navigation />
-            </LoadingProvider>
-          </TransactionProvider>
-        </BankProvider>
-      </UserProvider>
-    </AuthProvider>
-  );
 };
 
-AppRegistry.registerComponent(appName, () => App);
+const App = () => {
+  useNotifications();
+  const { isLoading } = useLoading(); // Sử dụng useLoading để lấy trạng thái isLoading
+
+  return (
+    <LoadingProvider> {/* Bọc tất cả các Provider bằng LoadingProvider */}
+      <AuthProvider>
+        <UserProvider>
+          <BankProvider>
+            <TransactionProvider>
+              <Navigation />
+              <IsLoading visible={isLoading} /> {/* Hiển thị IsLoading khi isLoading là true */}
+            </TransactionProvider>
+          </BankProvider>
+        </UserProvider>
+      </AuthProvider>
+    </LoadingProvider>
+  );
+};
 
 export default App;

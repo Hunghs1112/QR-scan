@@ -21,8 +21,9 @@ const One: React.FC = () => {
   } = useOneLogic();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
-      <ImageBackground source={IMAGES.background} style={styles.background}>
+     <ImageBackground source={IMAGES.background} style={styles.background}>
+    <SafeAreaView style={{ flex: 1 }}>
+     
         <Header />
         <ScrollContent
           refreshing={refreshing}
@@ -36,8 +37,9 @@ const One: React.FC = () => {
           loadingOpacity={loadingOpacity}
         />
         <Sticky />
-      </ImageBackground>
+     
     </SafeAreaView>
+     </ImageBackground>
   );
 };
 

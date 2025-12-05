@@ -1,29 +1,38 @@
-import { StyleSheet, Dimensions } from "react-native";
+import { StyleSheet, Dimensions, Platform } from "react-native";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Hàm tiện ích để tính kích thước tương đối dựa trên chiều rộng
+const scaleWidth = (size: number) => (SCREEN_WIDTH * size) / 100;
+
+// Hàm tiện ích để tính kích thước tương đối dựa trên chiều cao
+const scaleHeight = (size: number) => (SCREEN_HEIGHT * size) / 100;
+
+// Hàm tiện ích để tính fontSize tương đối
+const scaleFont = (size: number) => (SCREEN_WIDTH * size) / 100;
 
 export const styles = StyleSheet.create({
   background: {
-    backgroundColor: '#e5f2ff',
+    paddingTop: Platform.OS === 'ios' ? scaleHeight(8) : scaleHeight(5),
+    backgroundColor: '#ffffff',
     flex: 1,
-    paddingBottom: 0,
   },
   mainContainer: {
-    backgroundColor: '#e5f2ff',
+    backgroundColor: '#ffffff',
     flex: 1,
     position: 'relative',
   },
   scrollContainer: {
     flex: 1,
-    marginTop: 80,
+    marginTop: scaleHeight(10), // 80px -> ~10% chiều cao
   },
   upperContainer: {
-    backgroundColor: "#ffffff",
-    paddingBottom: 24,
+    backgroundColor: '#ffffff',
+    paddingBottom: scaleHeight(3), // 24px -> ~3% chiều cao
   },
   lowerContainer: {
     backgroundColor: "#e5f2ff",
-    paddingTop: 16,
+    paddingTop: scaleHeight(2), // 16px -> ~2% chiều cao
   },
   headerSection: {
     backgroundColor: "#ffffff",
@@ -32,7 +41,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
-    paddingHorizontal: 14,
+    paddingHorizontal: scaleWidth(3.5), // 14px -> ~3.5% chiều rộng
     position: 'absolute',
     top: 0,
     left: 0,
@@ -42,36 +51,36 @@ export const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 30,
-    paddingBottom: 20,
+    paddingTop: scaleHeight(3.75), // 30px -> ~3.75% chiều cao
+    paddingBottom: scaleHeight(2.5), // 20px -> ~2.5% chiều cao
   },
   backIcon: {},
   headerTitle: {
     flex: 1,
-    fontSize: 20,
+    fontSize: scaleFont(5), // 20px -> ~5% chiều rộng
     fontWeight: "bold",
     color: "#2f5884",
     textAlign: "left",
-    marginLeft: 20,
+    marginLeft: scaleWidth(5), // 20px -> ~5% chiều rộng
   },
   scrollContent: {
     flexGrow: 0,
   },
   sectionTitle: {
     color: "#182d38",
-    fontSize: 16,
+    fontSize: scaleFont(4), // 16px -> ~4% chiều rộng
     fontWeight: "bold",
-    marginHorizontal: 25,
-    marginBottom: 8,
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
+    marginBottom: scaleHeight(1), // 8px -> ~1% chiều cao
   },
   sourceAccountBox: {
     backgroundColor: "#FFFFFF",
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#dee4f6",
-    padding: 14,
-    marginHorizontal: 25,
-    marginBottom: 24,
+    padding: scaleWidth(3.5), // 14px -> ~3.5% chiều rộng
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
+    marginBottom: scaleHeight(3), // 24px -> ~3% chiều cao
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -80,27 +89,27 @@ export const styles = StyleSheet.create({
   },
   accountText: {
     color: "#2f5884",
-    fontSize: 13,
+    fontSize: scaleFont(3.25), // 13px -> ~3.25% chiều rộng
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: scaleHeight(1), // 8px -> ~1% chiều cao
   },
   balanceText: {
     color: "#182d38",
-    fontSize: 17,
+    fontSize: scaleFont(4.25), // 17px -> ~4.25% chiều rộng
     fontWeight: "600",
   },
   dropdownIcon: {
     position: "absolute",
-    right: 14,
-    top: 28,
+    right: scaleWidth(3.5), // 14px -> ~3.5% chiều rộng
+    top: scaleHeight(3.5), // 28px -> ~3.5% chiều cao
   },
   transferBox: {
     backgroundColor: "#FFFFFF",
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#dee4f6",
-    padding: 9,
-    marginHorizontal: 25,
+    padding: scaleWidth(2.25), // 9px -> ~2.25% chiều rộng
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
     marginBottom: 0,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -111,15 +120,15 @@ export const styles = StyleSheet.create({
   bankSection: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-    height: 55,
-    paddingVertical: 8,
+    marginBottom: scaleHeight(1.5), // 12px -> ~1.5% chiều cao
+    height: scaleHeight(6.875), // 55px -> ~6.875% chiều cao
+    paddingVertical: scaleHeight(1), // 8px -> ~1% chiều cao
   },
   bankIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 12,
+    width: scaleWidth(9), // 36px -> ~9% chiều rộng
+    height: scaleWidth(9), // 36px -> ~9% chiều rộng
+    borderRadius: scaleWidth(4.5), // 18px -> ~4.5% chiều rộng
+    marginRight: scaleWidth(3), // 12px -> ~3% chiều rộng
     borderWidth: 0.4,
     borderColor: "#dee4f6",
   },
@@ -131,7 +140,7 @@ export const styles = StyleSheet.create({
   },
   bankText: {
     color: "#182d38",
-    fontSize: 16,
+    fontSize: scaleFont(4), // 16px -> ~4% chiều rộng
     fontWeight: "500",
   },
   bankDropdownIcon: {
@@ -146,21 +155,21 @@ export const styles = StyleSheet.create({
   accountInputSection: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 5,
-    height: 55,
-    paddingVertical: 8,
+    paddingTop: scaleHeight(0.625), // 5px -> ~0.625% chiều cao
+    height: scaleHeight(6.875), // 55px -> ~6.875% chiều cao
+    paddingVertical: scaleHeight(1), // 8px -> ~1% chiều cao
   },
   accountInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: scaleFont(4), // 16px -> ~4% chiều rộng
     color: "#182d38",
-    paddingVertical: 5,
+    paddingVertical: scaleHeight(0.625), // 5px -> ~0.625% chiều cao
     fontWeight: "500",
   },
   contactIcon: {
-    marginTop: 4,
-    width: 50,
-    height: 50,
+    marginTop: scaleHeight(0.5), // 4px -> ~0.5% chiều cao
+    width: scaleWidth(12.5), // 50px -> ~12.5% chiều rộng
+    height: scaleWidth(12.5), // 50px -> ~12.5% chiều rộng
   },
   inputWrapper: {
     flex: 1,
@@ -173,26 +182,32 @@ export const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderColor: "#dee4f6",
     borderRadius: 4,
-    marginHorizontal: 25,
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
     marginTop: 0,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
-    height: 48,
+    minHeight: scaleHeight(6), // 48px -> ~6% chiều cao
   },
   recipientNameSection: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 9,
+    paddingVertical: scaleHeight(1), // 8px -> ~1% chiều cao
+    paddingHorizontal: scaleWidth(2.25), // 9px -> ~2.25% chiều rộng
+  },
+  recipientNameTextContainer: {
+    flex: 1,
+    marginRight: scaleWidth(2), // 8px -> ~2% chiều rộng
   },
   recipientNameText: {
     color: "#182d38",
-    fontSize: 16,
+    fontSize: scaleFont(4), // 16px -> ~4% chiều rộng
     fontWeight: "500",
+    flexWrap: "wrap",
+    flexShrink: 1,
   },
   saveButton: {
     flexDirection: "row",
@@ -200,26 +215,26 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2f5884",
     borderRadius: 30,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: scaleHeight(0.5), // 4px -> ~0.5% chiều cao
+    paddingHorizontal: scaleWidth(2), // 8px -> ~2% chiều rộng
   },
   saveButtonText: {
     color: "#2f5884",
-    fontSize: 14,
+    fontSize: scaleFont(3.5), // 14px -> ~3.5% chiều rộng
     fontWeight: "600",
-    marginRight: 4,
+    marginRight: scaleWidth(1), // 4px -> ~1% chiều rộng
   },
   amountSection: {
     backgroundColor: "#ffffff",
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#dee4f6",
-    height: 64,
-    padding: 9,
+    height: scaleHeight(8), // 64px -> ~8% chiều cao
+    padding: scaleWidth(2.25), // 9px -> ~2.25% chiều rộng
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 25,
-    marginBottom: 24,
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
+    marginBottom: scaleHeight(3), // 24px -> ~3% chiều cao
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -235,36 +250,35 @@ export const styles = StyleSheet.create({
   },
   amountInput: {
     color: "#2f5884",
-    fontSize: 20,
+    fontSize: scaleFont(5), // 20px -> ~5% chiều rộng
     fontWeight: "bold",
     textAlign: "center",
-    paddingRight: 4,
+    paddingRight: scaleWidth(1), // 4px -> ~1% chiều rộng
   },
   vndText: {
     color: "#182d38",
-    fontSize: 12,
+    fontSize: scaleFont(3), // 12px -> ~3% chiều rộng
     fontWeight: "600",
     alignSelf: "center",
   },
   amountClearIconContainer: {
     backgroundColor: "#999",
     borderRadius: 10,
-    width: 20,
-    height: 20,
+    width: scaleWidth(5), // 20px -> ~5% chiều rộng
+    height: scaleWidth(5), // 20px -> ~5% chiều rộng
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    right: 10,
+    right: scaleWidth(2.5), // 10px -> ~2.5% chiều rộng
   },
   contentInputContainer: {
-    height: 70,
+    height: scaleHeight(8.75), // 70px -> ~8.75% chiều cao
     backgroundColor: "#FFFFFF",
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#dee4f6",
-    padding: 12,
-    marginHorizontal: 25,
-    marginBottom: 24,
+    padding: scaleWidth(3), // 12px -> ~3% chiều rộng
+    marginHorizontal: scaleWidth(6.25), // 25px -> ~6.25% chiều rộng
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -273,7 +287,7 @@ export const styles = StyleSheet.create({
   },
   contentLabel: {
     color: "#2f5884",
-    fontSize: 12,
+    fontSize: scaleFont(3), // 12px -> ~3% chiều rộng
     fontWeight: "bold",
   },
   contentInputRow: {
@@ -282,57 +296,57 @@ export const styles = StyleSheet.create({
   },
   contentInput: {
     flex: 1,
-    fontSize: 18,
+    fontSize: scaleFont(4.5), // 18px -> ~4.5% chiều rộng
     color: "#252836",
-    paddingVertical: 7,
+    paddingVertical: scaleHeight(0.875), // 7px -> ~0.875% chiều cao
     fontWeight: "500",
   },
   contentClearIconContainer: {
     backgroundColor: "#999",
     borderRadius: 10,
-    width: 20,
-    height: 20,
+    width: scaleWidth(5), // 20px -> ~5% chiều rộng
+    height: scaleWidth(5), // 20px -> ~5% chiều rộng
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 8,
+    marginLeft: scaleWidth(2), // 8px -> ~2% chiều rộng
   },
   buttonContainerWrapper: {
     backgroundColor: '#e5f2ff',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingHorizontal: scaleWidth(5), // 20px -> ~5% chiều rộng
+    paddingBottom: scaleHeight(4), // 10px -> ~1% chiều cao
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 10,
+    gap: scaleWidth(2.5), // 10px -> ~2.5% chiều rộng
   },
   backButton: {
-    height: 46,
+    height: scaleHeight(5.75), // 46px -> ~5.75% chiều cao
     backgroundColor: "#e5f2ff",
     borderWidth: 2,
     borderColor: "#2f5884",
     borderRadius: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingVertical: scaleHeight(1.5), // 12px -> ~1.5% chiều cao
+    paddingHorizontal: scaleWidth(4.5), // 18px -> ~4.5% chiều rộng
     flex: 0.62,
     alignItems: "center",
   },
   backButtonText: {
     color: "#2f5884",
-    fontSize: 15,
+    fontSize: scaleFont(3.75), // 15px -> ~3.75% chiều rộng
     fontWeight: "600",
   },
   continueButton: {
     backgroundColor: "#2f5884",
     borderRadius: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 42,
+    paddingVertical: scaleHeight(1.5), // 12px -> ~1.5% chiều cao
+    paddingHorizontal: scaleWidth(10.5), // 42px -> ~10.5% chiều rộng
     flex: 1.4,
     alignItems: "center",
   },
   continueButtonText: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: scaleFont(3.75), // 15px -> ~3.75% chiều rộng
     fontWeight: "600",
   },
 });

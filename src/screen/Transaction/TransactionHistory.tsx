@@ -31,13 +31,13 @@ type Transaction = {
   recipient_account_number: string
   type: string
   timestamp: string
-  balance: number // Added balance to Transaction type
+  balance: number
   codes: { randomNum1?: number; randomNum2?: number; transactionCode?: string }
 }
 
 const TransactionHistory: React.FC = () => {
   const { groupedTransactions, loading, handleRefresh, formatVND, formatTimestamp, handleSearch } = useTransactionLogic()
-  const { account_number, name } = useAuth() // Removed balance from useAuth
+  const { account_number, name } = useAuth()
   const navigation = useNavigation<NavigationProp>()
   const [activeTab, setActiveTab] = useState<"mine" | "balance">("balance")
   const [searchText, setSearchText] = useState("")
@@ -46,7 +46,7 @@ const TransactionHistory: React.FC = () => {
     const maskedAccount = account_number ? `${account_number.slice(0, 2)}xxx${account_number.slice(-4)}` : "TKxxxxxx"
     const formattedAmount = `${item.type === "CASH_IN" ? "+" : "-"}${formatVND(item.amount)}VND`
     const formattedTime = formatTimestamp(item.timestamp)
-    const formattedBalance = formatVND(item.balance || 0) // Use balance from transaction
+    const formattedBalance = formatVND(item.balance || 0)
     const { randomNum1, randomNum2, transactionCode } = item.codes || {}
 
     const notificationContent =
@@ -74,11 +74,12 @@ const TransactionHistory: React.FC = () => {
   const renderGroup = ({ item }: { item: { date: string; transactions: Transaction[] } }) => (
     <View style={styles.dateContainer}>
       <Text style={styles.dateHeader}>{item.date}</Text>
-      <FlatList
-        data={item.transactions}
-        renderItem={renderTransaction}
-        keyExtractor={(transaction) => transaction.timestamp}
-      />
+      {item.transactions.map((transaction, index) => (
+        <View key={transaction.timestamp}>
+          {renderTransaction({ item: transaction })}
+          {index < item.transactions.length - 1 && <View style={styles.transactionDivider} />}
+        </View>
+      ))}
     </View>
   )
 

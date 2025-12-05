@@ -138,13 +138,12 @@ export const styles = StyleSheet.create({
     width: '100%',
   },
   optionImage: {
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     borderColor: '#D6E8FB',
     borderRadius: 12,
     marginLeft: 4,
     alignSelf: 'flex-start',
-    paddingLeft: 12,
     marginBottom: 4,
   },
   bottomOptions: {
@@ -196,7 +195,7 @@ export const styles = StyleSheet.create({
     height: 36,
     borderWidth: 1,
     borderColor: '#D6E8FB',
-    backgroundColor: 'white',
+    
     borderRadius: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

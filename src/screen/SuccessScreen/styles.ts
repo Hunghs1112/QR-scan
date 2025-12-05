@@ -9,9 +9,8 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   homeButton: {
-    position: 'absolute',
-    top: 26,
-    right: 20,
+    marginRight: 20,
+    alignSelf: 'flex-end', // Aligns button to the right within the container
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -30,9 +29,10 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   checkmarkIcon: {
-    width: 180,
-    height: 180,
-    resizeMode: 'center',
+    width: 160,
+    height: 105,
+    resizeMode: 'contain',
+    transform: [{ scale: 1.5 }], // Scale the image up by 1.5x to make the tick appear larger
   },
   successText: {
     fontSize: 18,
@@ -79,6 +79,8 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     fontFamily: 'Roboto',
     textTransform: 'uppercase',
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   bankInfoRow: {
     flexDirection: 'row',
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d7e2f6',
     borderRadius: 14,
-    paddingHorizontal:6,
+    paddingHorizontal: 6,
     paddingTop: 7,
     backgroundColor: '#d7e2f6',
     justifyContent: 'center',

@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+"use client"
+
+import type * as React from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View,
   Text,
@@ -10,20 +13,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   UIManager,
-  findNodeHandle
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { styles } from './styles';
-import { useThreeLogic } from './ThreeLogic';
-import BankSelectorModal from './BankSelectorModal';
-import Entypo from 'react-native-vector-icons/Entypo';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { SvgXml } from 'react-native-svg';
-import { useAuth } from '../Context/AuthContext';
-import { Dimensions } from 'react-native';
+  findNodeHandle,
+} from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { styles } from "./styles"
+import { useThreeLogic } from "./ThreeLogic"
+import BankSelectorModal from "./BankSelectorModal"
+import RecipientNameModal from "./RecipientNameModal"
+import LimitedAccountModal from "./LimitedAccountModal"
+import Entypo from "react-native-vector-icons/Entypo"
+import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import { SvgXml } from "react-native-svg"
+import { useAuth } from "../Context/AuthContext"
+import { Dimensions } from "react-native"
+import IsLoading from "./IsLoading"
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
 const Three: React.FC = () => {
   const {
@@ -37,6 +43,10 @@ const Three: React.FC = () => {
     selectedBank,
     setIsModalVisible,
     isModalVisible,
+    isRecipientNameModalVisible,
+    setIsRecipientNameModalVisible,
+    isLimitedModalVisible,
+    handleLimitedModalClose,
     banks,
     account_number,
     balance,
@@ -44,113 +54,132 @@ const Three: React.FC = () => {
     formatVND,
     setSelectedBank,
     debouncedFetchRecipientInfo,
-  } = useThreeLogic();
-  const { name } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [svgXml, setSvgXml] = useState<string | null>(null);
-  const [rawAmount, setRawAmount] = useState<string>('');
-  const [displayAmount, setDisplayAmount] = useState<string>('');
-  const [isAmountInputFocused, setIsAmountInputFocused] = useState(false);
-  const [isContentInputFocused, setIsContentInputFocused] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const amountInputRef = useRef<TextInput>(null);
-  const contentInputRef = useRef<TextInput>(null);
+  } = useThreeLogic()
+  const { name } = useAuth()
+  const navigation = useNavigation<NativeStackNavigationProp<any>>()
+  const [svgXml, setSvgXml] = useState<string | null>(null)
+  const [rawAmount, setRawAmount] = useState<string>("")
+  const [isAmountInputFocused, setIsAmountInputFocused] = useState(false)
+  const [isContentInputFocused, setIsContentInputFocused] = useState(false)
+  const [amountTextWidth, setAmountTextWidth] = useState<number>(0)
+  const scrollViewRef = useRef<ScrollView>(null)
+  const amountInputRef = useRef<TextInput>(null)
+  const contentInputRef = useRef<TextInput>(null)
+  const hasFetchedOnMountRef = useRef<boolean>(false)
 
   const formatNumberWithCommas = useCallback((value: string): string => {
-    const digits = value.replace(/[^\d]/g, '');
-    if (!digits) return '';
-    return parseInt(digits).toLocaleString('en-US', { minimumFractionDigits: 0 });
-  }, []);
+    const digits = value.replace(/[^\d]/g, "")
+    if (!digits) return ""
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  }, [])
 
-  // Khi số tài khoản thay đổi -> gọi lại API lấy tên
-  useEffect(() => {
-    if (recipientAccountNumber && selectedBank?.code) {
-      debouncedFetchRecipientInfo(recipientAccountNumber, selectedBank.code);
+  const formatRecipientName = useCallback((name: string): string => {
+    const words = name.trim().split(/\s+/)
+    if (words.length <= 3) {
+      return name
     }
-  }, [recipientAccountNumber, selectedBank?.code, debouncedFetchRecipientInfo]);
+    const lines: string[] = []
+    for (let i = 0; i < words.length; i += 3) {
+      lines.push(words.slice(i, i + 3).join(" "))
+    }
+    return lines.join("\n")
+  }, [])
+
 
   useEffect(() => {
-    setTransferContent(name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
-  }, [setTransferContent, name]);
+    setTransferContent(name ? `${name} chuyen tien` : "Khach Hang chuyen tien")
+  }, [setTransferContent, name])
+
+  // If coming from QR (prefilled account/bank), fetch recipient name once on mount
+  useEffect(() => {
+    if (hasFetchedOnMountRef.current) return
+    if (recipientAccountNumber && selectedBank?.code && !recipientName) {
+      hasFetchedOnMountRef.current = true
+      debouncedFetchRecipientInfo(recipientAccountNumber, selectedBank.code)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchSvg = async () => {
       try {
         if (selectedBank?.icon_url) {
-          const response = await fetch(selectedBank.icon_url);
-          const data = await response.text();
-          setSvgXml(data.trim().startsWith('<svg') ? data : null);
+          const response = await fetch(selectedBank.icon_url)
+          const data = await response.text()
+          setSvgXml(data.trim().startsWith("<svg") ? data : null)
         } else {
-          setSvgXml(null);
+          setSvgXml(null)
         }
       } catch {
-        setSvgXml(null);
+        setSvgXml(null)
       }
-    };
-    fetchSvg();
-  }, [selectedBank]);
+    }
+    fetchSvg()
+  }, [selectedBank])
 
   const handleAmountChange = useCallback((text: string) => {
-    // Lấy chỉ số
-    const digitsOnly = text.replace(/[^\d]/g, '');
-    setRawAmount(digitsOnly);
-
-    // Nếu không có gì thì reset
-    if (!digitsOnly) {
-      setDisplayAmount('');
-      return;
-    }
-
-    // Format nhưng đảm bảo dấu phẩy cố định (regex chia nhóm 3 số)
-    const formatted = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    setDisplayAmount(formatted);
-  }, []);
+    const digitsOnly = text.replace(/[^\d]/g, "")
+    setRawAmount(digitsOnly)
+  }, [])
 
   const handleContinuePress = useCallback(() => {
-    handleContinue(rawAmount, transferContent);
-  }, [rawAmount, transferContent, handleContinue]);
+    handleContinue(rawAmount, transferContent)
+  }, [rawAmount, transferContent, handleContinue])
 
   const handleBackPress = useCallback(() => {
-    setSelectedBank(null);
-    setRecipientAccountNumber('');
-    setRecipientName(''); // Clear recipientName to reset debouncedFetchRecipientInfo effect
-    setRawAmount('');
-    setDisplayAmount('');
-    setTransferContent(name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
-    navigation.goBack();
-  }, [navigation, name, setTransferContent, setRecipientAccountNumber, setRecipientName, setSelectedBank]);
+    setSelectedBank(null)
+    setRecipientAccountNumber("")
+    setRecipientName("")
+    setRawAmount("")
+    setTransferContent(name ? `${name} chuyen tien` : "Khach Hang chuyen tien")
+    navigation.goBack()
+  }, [navigation, name, setTransferContent, setRecipientAccountNumber, setRecipientName, setSelectedBank])
 
   const scrollToInput = useCallback((ref: React.RefObject<any>) => {
-    const nodeHandle = findNodeHandle(ref.current);
+    const nodeHandle = findNodeHandle(ref.current)
     if (nodeHandle) {
       UIManager.measure(nodeHandle, (_x, _y, _w, _h, _pageX, pageY) => {
-        scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-      });
+        scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true })
+      })
     }
-  }, []);
+  }, [])
 
   const handleAmountFocus = useCallback(() => {
-    setIsAmountInputFocused(true);
+    setIsAmountInputFocused(true)
     setTimeout(() => {
-      scrollToInput(amountInputRef);
-    }, 100);
-  }, [scrollToInput]);
+      scrollToInput(amountInputRef)
+    }, 100)
+  }, [scrollToInput])
+
+  const handleAmountBlur = useCallback(() => {
+    setIsAmountInputFocused(false)
+  }, [])
 
   const handleContentFocus = useCallback(() => {
-    setIsContentInputFocused(true);
+    setIsContentInputFocused(true)
     setTimeout(() => {
-      scrollToInput(contentInputRef);
-    }, 100);
-  }, [scrollToInput]);
+      scrollToInput(contentInputRef)
+    }, 100)
+  }, [scrollToInput])
+
+  const handleAmountTextLayout = useCallback((event: any) => {
+    const { width } = event.nativeEvent.layout
+    setAmountTextWidth(width)
+  }, [])
+
+  const handleAccountNumberBlur = useCallback(() => {
+    if (recipientAccountNumber && selectedBank?.code) {
+      debouncedFetchRecipientInfo(recipientAccountNumber, selectedBank.code)
+    }
+  }, [recipientAccountNumber, selectedBank?.code, debouncedFetchRecipientInfo])
 
   return (
-    <SafeAreaView style={styles.background}>
+    <View style={styles.background}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        behavior={Platform.OS === "ios" ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <View style={styles.mainContainer}>
+        <View style={[styles.mainContainer, loading && { opacity: 0.5 }]}>
           <View style={styles.headerSection}>
             <View style={styles.headerContainer}>
               <TouchableOpacity onPress={handleBackPress} style={styles.backIcon}>
@@ -171,18 +200,11 @@ const Three: React.FC = () => {
               <View style={styles.upperContainer}>
                 <Text style={styles.sectionTitle}>Nguồn chuyển tiền</Text>
                 <View style={styles.sourceAccountBox}>
-                  <Text style={styles.accountText}>
-                    TÀI KHOẢN THANH TOÁN - {account_number || ''}
-                  </Text>
+                  <Text style={styles.accountText}>TÀI KHOẢN THANH TOÁN - {account_number || ""}</Text>
                   <Text style={styles.balanceText}>
-                    {balance !== undefined ? formatVND(balance.toString()) : '0'} VND
+                    {balance !== undefined ? formatVND(balance.toString()) : "0"} VND
                   </Text>
-                  <Entypo
-                    name="chevron-small-down"
-                    size={24}
-                    color="#4e5db5"
-                    style={styles.dropdownIcon}
-                  />
+                  <Entypo name="chevron-small-down" size={24} color="#4e5db5" style={styles.dropdownIcon} />
                 </View>
                 <Text style={styles.sectionTitle}>Chuyển đến</Text>
                 <View style={styles.transferBox}>
@@ -196,7 +218,7 @@ const Three: React.FC = () => {
                         <SvgXml xml={svgXml} width={32} height={32} />
                       ) : (
                         <Image
-                          source={require('../screen/image/nh.png')}
+                          source={require("../screen/image/nh.png")}
                           style={styles.bankIcon}
                           resizeMode="contain"
                         />
@@ -204,16 +226,9 @@ const Three: React.FC = () => {
                     </View>
                     <View style={styles.inputWrapper}>
                       <View style={styles.bankSelector}>
-                        <Text style={styles.bankText}>
-                          {selectedBank ? selectedBank.name : 'Ngân hàng'}
-                        </Text>
+                        <Text style={styles.bankText}>{selectedBank ? selectedBank.name : "Ngân hàng"}</Text>
                       </View>
-                      <Entypo
-                        name="chevron-small-down"
-                        size={24}
-                        color="#4e5db5"
-                        style={styles.bankDropdownIcon}
-                      />
+                      <Entypo name="chevron-small-down" size={24} color="#4e5db5" style={styles.bankDropdownIcon} />
                     </View>
                   </TouchableOpacity>
                   <View style={styles.dashedLine} />
@@ -226,9 +241,10 @@ const Three: React.FC = () => {
                         keyboardType="numeric"
                         placeholder="Số tài khoản"
                         placeholderTextColor="#999"
+                        onBlur={handleAccountNumberBlur}
                       />
                       <Image
-                        source={require('../screen/image/danhba.png')}
+                        source={require("../screen/image/danhba.png")}
                         style={styles.contactIcon}
                         resizeMode="contain"
                       />
@@ -254,7 +270,7 @@ const Three: React.FC = () => {
                 <View
                   style={[
                     styles.amountSection,
-                    isAmountInputFocused && { borderWidth: 1, borderColor: '#266fb6', borderRadius: 8 }
+                    isAmountInputFocused && { borderWidth: 1, borderColor: "#266fb6", borderRadius: 8 },
                   ]}
                 >
                   <TouchableOpacity
@@ -262,27 +278,37 @@ const Three: React.FC = () => {
                     onPress={() => amountInputRef.current?.focus()}
                     style={styles.amountInputContainer}
                   >
-                    <TextInput
-                      ref={amountInputRef}
-                      style={styles.amountInput}
-                      value={displayAmount}
-                      onChangeText={handleAmountChange}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor="#275285"
-                      onFocus={handleAmountFocus}
-                      onBlur={() => setIsAmountInputFocused(false)}
-                    />
-                    <Text style={styles.vndText}>VND</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ position: "relative" }}>
+                        <TextInput
+                          ref={amountInputRef}
+                          style={[styles.amountInput, { opacity: 0, position: "absolute", zIndex: 1 }]}
+                          value={rawAmount}
+                          onChangeText={handleAmountChange}
+                          keyboardType="numeric"
+                          placeholder=""
+                          onFocus={handleAmountFocus}
+                          onBlur={handleAmountBlur}
+                          selection={{ start: rawAmount.length, end: rawAmount.length }}
+                        />
+                        <Text style={[styles.amountInput, { color: rawAmount ? "#275285" : "#275285" }]}>
+                          {rawAmount ? formatNumberWithCommas(rawAmount) : "0"}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.vndText,
+                          {
+                            marginLeft: 8,
+                          },
+                        ]}
+                      >
+                        VND
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                  {displayAmount && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setRawAmount('');
-                        setDisplayAmount('');
-                      }}
-                      style={styles.amountClearIconContainer}
-                    >
+                  {rawAmount && (
+                    <TouchableOpacity onPress={() => setRawAmount("")} style={styles.amountClearIconContainer}>
                       <MaterialIcons name="close" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   )}
@@ -291,7 +317,7 @@ const Three: React.FC = () => {
                 <View
                   style={[
                     styles.contentInputContainer,
-                    isContentInputFocused && { borderWidth: 1, borderColor: '#266fb6', borderRadius: 8 }
+                    isContentInputFocused && { borderWidth: 1, borderColor: "#266fb6", borderRadius: 8 },
                   ]}
                 >
                   <Text style={styles.contentLabel}>Nội dung chuyển khoản</Text>
@@ -316,7 +342,7 @@ const Three: React.FC = () => {
                     {transferContent && (
                       <TouchableOpacity
                         onPress={() => {
-                          setTransferContent('');
+                          setTransferContent("")
                         }}
                         style={styles.contentClearIconContainer}
                       >
@@ -329,28 +355,14 @@ const Three: React.FC = () => {
                 <View
                   style={[
                     styles.buttonContainerWrapper,
-                    {
-                      marginTop:
-                        isAmountInputFocused || isContentInputFocused
-                          ? 10
-                          : recipientName
-                          ? 160
-                          : 210,
-                    },
+                    { marginTop: isAmountInputFocused || isContentInputFocused ? 10 : recipientName ? 56 : 100 },
                   ]}
                 >
                   <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                      style={styles.backButton}
-                      onPress={handleBackPress}
-                    >
+                    <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
                       <Text style={styles.backButtonText}>Quay lại</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.continueButton}
-                      onPress={handleContinuePress}
-                      disabled={loading}
-                    >
+                    <TouchableOpacity style={styles.continueButton} onPress={handleContinuePress} disabled={loading}>
                       <Text style={styles.continueButtonText}>Tiếp tục</Text>
                     </TouchableOpacity>
                   </View>
@@ -359,17 +371,26 @@ const Three: React.FC = () => {
             </ScrollView>
           </View>
         </View>
-
-        <BankSelectorModal
-          visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
-          banks={banks}
-          onSelectBank={setSelectedBank}
-          loading={false}
-        />
+        <IsLoading visible={loading} />
       </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-};
+      <BankSelectorModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        banks={banks}
+        onSelectBank={setSelectedBank}
+        loading={false}
+      />
+      <RecipientNameModal
+        visible={isRecipientNameModalVisible}
+        onClose={() => setIsRecipientNameModalVisible(false)}
+        onSubmit={setRecipientName}
+      />
+      <LimitedAccountModal
+        visible={isLimitedModalVisible}
+        onClose={handleLimitedModalClose}
+      />
+    </View>
+  )
+}
 
-export default Three;
+export default Three

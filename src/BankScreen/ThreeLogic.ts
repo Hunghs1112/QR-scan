@@ -42,6 +42,8 @@ export const useThreeLogic = () => {
   const { account_number, balance, name } = useAuth();
   const { banks, selectedBank, setSelectedBank } = useBank();
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isRecipientNameModalVisible, setIsRecipientNameModalVisible] = useState(false);
+  const [isLimitedModalVisible, setIsLimitedModalVisible] = useState(false);
 
   const formatVND = useCallback((value: string): string => {
     const num = value.replace(/[^0-9]/g, '');
@@ -54,7 +56,7 @@ export const useThreeLogic = () => {
     setLoading(true);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 4000);
       const response = await fetch(API_CONFIG.url, {
         method: 'POST',
         headers: {
@@ -68,14 +70,17 @@ export const useThreeLogic = () => {
       clearTimeout(timeout);
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
       const data = await response.json();
-      const ownerName = data.success && data.data?.ownerName ? data.data.ownerName : 'Nguyen Van A';
-      setRecipientName(ownerName);
+      if (data.success && data.data?.ownerName) {
+        setRecipientName(data.data.ownerName);
+      } else {
+        setIsRecipientNameModalVisible(true);
+      }
     } catch (err) {
-      setRecipientName('Nguyen Van A');
+      setIsRecipientNameModalVisible(true);
     } finally {
       setLoading(false);
     }
-  }, [setRecipientName, setLoading]);
+  }, [setRecipientName, setLoading, setIsRecipientNameModalVisible]);
 
   const debounce = useCallback((func: (...args: any[]) => void, wait: number) => {
     let timeout: NodeJS.Timeout;
@@ -91,7 +96,7 @@ export const useThreeLogic = () => {
   );
 
   const handleContinue = useCallback(
-    (displayAmount: string, displayTransferContent: string) => {
+    async (displayAmount: string, displayTransferContent: string) => {
       const cleanAmount = displayAmount.replace(/[^0-9]/g, '');
       const parsedAmount = parseFloat(cleanAmount || '0');
       const cleanTransferContent = displayTransferContent.trim() || (name ? `${name} chuyen tien` : 'Khach Hang chuyen tien');
@@ -105,11 +110,27 @@ export const useThreeLogic = () => {
         return;
       }
 
+      // Kiểm tra trạng thái limited từ API
+      try {
+        setLoading(true);
+        const response = await fetch(`http://51.79.181.161:5000/user/${account_number}`);
+        const data = await response.json();
+        
+        if (data.success && data.user?.limited === 1) {
+          setIsLimitedModalVisible(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking limited status:', error);
+      } finally {
+        setLoading(false);
+      }
+
       setAmount(cleanAmount);
       setTransferContent(cleanTransferContent);
       navigation.navigate('Confirm');
     },
-    [recipientAccountNumber, recipientName, selectedBank, account_number, balance, name, setAmount, setTransferContent, navigation]
+    [recipientAccountNumber, recipientName, selectedBank, account_number, balance, name, setAmount, setTransferContent, setLoading, navigation]
   );
 
   useEffect(() => {
@@ -127,6 +148,13 @@ export const useThreeLogic = () => {
     return unsubscribe;
   }, [navigation, clearContext, setSelectedBank]);
 
+  const handleLimitedModalClose = useCallback(() => {
+    setIsLimitedModalVisible(false);
+    clearContext();
+    setSelectedBank(null);
+    navigation.navigate('Home');
+  }, [navigation, clearContext, setSelectedBank]);
+
   return {
     recipientAccountNumber,
     setRecipientAccountNumber,
@@ -141,11 +169,15 @@ export const useThreeLogic = () => {
     setSelectedBank,
     isModalVisible,
     setIsModalVisible,
+    isRecipientNameModalVisible,
+    setIsRecipientNameModalVisible,
+    isLimitedModalVisible,
+    handleLimitedModalClose,
     banks,
     account_number,
     balance,
     handleContinue,
     formatVND,
-    debouncedFetchRecipientInfo, // xuất thêm để Three dùng
+    debouncedFetchRecipientInfo,
   };
 };

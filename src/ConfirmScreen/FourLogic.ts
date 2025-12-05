@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Alert, Keyboard } from 'react-native';
+import { Alert, Keyboard, Platform } from 'react-native';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import { useTransaction } from '../Context/TransactionContext';
 import { useBank } from '../Context/BankContext';
 import { useAuth } from '../Context/AuthContext';
+import { useLoading } from '../Context/LoadingContext'; // Import useLoading
 import { cashOut } from '../utils/apiService';
 import PushNotification from 'react-native-push-notification';
 import { debounce } from 'lodash';
 
-// Define RootStackParamList
 type RootStackParamList = {
   Login: undefined;
   Main: undefined;
@@ -44,7 +45,6 @@ interface FourLogicReturn {
   recipientName: string;
   amount: string;
   transferContent: string;
-  transactionLoading: boolean;
   selectedBank: Bank | null;
   username: string;
   account_number: string | undefined;
@@ -74,12 +74,11 @@ export const useFourLogic = (): FourLogicReturn => {
     recipientName,
     amount,
     transferContent,
-    setLoading: setTransactionLoading,
-    loading: transactionLoading,
     clearContext,
   } = useTransaction();
   const { selectedBank } = useBank();
   const { username, account_number, name, balance, setBalance } = useAuth();
+  const { setLoading, isLoading } = useLoading(); // Sử dụng useLoading thay vì transactionLoading
   const [isModalVisible, setModalVisible] = useState(false);
   const [otpModalVisible, setOtpModalVisible] = useState(false);
   const [otp, setOtp] = useState('');
@@ -97,9 +96,9 @@ export const useFourLogic = (): FourLogicReturn => {
           setOtpModalVisible(false);
           return 0;
         }
-        return prev - 1; // Update every 5 seconds
+        return prev - 1;
       });
-    }, 1000); // Changed from 1000ms to 5000ms
+    }, 1000);
     return () => clearInterval(timer);
   }, [otpModalVisible, setOtpModalVisible]);
 
@@ -149,14 +148,17 @@ export const useFourLogic = (): FourLogicReturn => {
   const handleConfirm = useCallback(() => {
     const parsedAmount = parseFloat(amount.replace(/[^0-9]/g, '')) || 0;
     if (parsedAmount > 9999999) {
+      setLoading(true); // Bật loading khi chuyển sang FaceScan
       navigation.navigate('FaceScan');
+      setTimeout(() => setLoading(false), 500); // Tắt loading sau khi chuyển màn hình
     } else {
       setModalVisible(true);
     }
-  }, [amount, navigation, setModalVisible]);
+  }, [amount, navigation, setModalVisible, setLoading]);
 
   const handleOtpConfirm = useCallback(async () => {
     setOtpLoading(true);
+    setLoading(true); // Bật loading từ LoadingContext
     try {
       const parsedAmount = parseFloat(amount.replace(/[^0-9]/g, '') || '0');
       if (!account_number || !name || !recipientAccountNumber || !recipientName || parsedAmount <= 0) {
@@ -175,7 +177,6 @@ export const useFourLogic = (): FourLogicReturn => {
       const response = await cashOut(data);
       setBalance?.(response.balance);
 
-      // Generate notification content
       const maskedAccount = `${account_number.slice(0, 2)}xxx${account_number.slice(-4)}`;
       const formattedAmount = `-${formatVND(amount)}VND`;
       const now = new Date();
@@ -187,22 +188,34 @@ export const useFourLogic = (): FourLogicReturn => {
       const transactionCode = `ACSP/P${Math.floor(Math.random() * 1e7).toString().padStart(7, '0')}`;
       const message = `TK:${maskedAccount}|GD: ${formattedAmount} ${formattedDate}|SD: ${balanceVND}VND|DEN: ${recipientName} - ${recipientAccountNumber}|ND: ${transferContent}- Ma GD ${transactionCode}`;
 
-      // Delay notification to avoid blocking UI
       setTimeout(() => {
-        PushNotification.localNotification({
-          channelId: 'remote-channel',
-          title: 'Thông báo biến động số dư',
-          message: message,
-          userInfo: {
-            transactionId: transactionCode,
-            type: 'transaction',
-          },
-          priority: 'high',
-          importance: 'high',
-          vibrate: true,
-          soundName: 'default',
-        });
-      }, 100);
+        if (Platform.OS === 'ios') {
+          PushNotificationIOS.addNotificationRequest({
+            id: transactionCode,
+            title: 'Thông báo biến động số dư',
+            body: message,
+            sound: 'default',
+            userInfo: {
+              transactionId: transactionCode,
+              type: 'transaction',
+            },
+          });
+        } else {
+          PushNotification.localNotification({
+            channelId: 'remote-channel',
+            title: 'Thông báo biến động số dư',
+            message: message,
+            userInfo: {
+              transactionId: transactionCode,
+              type: 'transaction',
+            },
+            priority: 'high',
+            importance: 'high',
+            vibrate: true,
+            soundName: 'default',
+          });
+        }
+      }, 300);
 
       setOtp('');
       setDigitalOtp('');
@@ -213,6 +226,7 @@ export const useFourLogic = (): FourLogicReturn => {
       Alert.alert('Error', `Giao dịch thất bại: ${error.message}`);
     } finally {
       setOtpLoading(false);
+      setLoading(false); // Tắt loading từ LoadingContext
     }
   }, [
     amount,
@@ -226,6 +240,7 @@ export const useFourLogic = (): FourLogicReturn => {
     navigation,
     transferContent,
     formatVND,
+    setLoading, // Thêm setLoading vào dependencies
   ]);
 
   return {
@@ -233,7 +248,6 @@ export const useFourLogic = (): FourLogicReturn => {
     recipientName,
     amount,
     transferContent,
-    transactionLoading,
     selectedBank,
     username,
     account_number,

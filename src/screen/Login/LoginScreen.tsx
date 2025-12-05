@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeAreaView, ImageBackground } from "react-native";
+import { SafeAreaView, ImageBackground, View } from "react-native";
 import { styles } from "./styles";
 import { IMAGES } from "./constants";
 import { Header } from "./Header";
@@ -9,16 +9,15 @@ import { Footer } from "./Footer";
 
 const LoginScreen: React.FC = () => {
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ImageBackground source={IMAGES.background} style={styles.background}>
-        <SafeAreaView style={styles.safeArea}>
-          <Header />
-          <LoginCard />
-          <Features />
-          <Footer />
-        </SafeAreaView>
-      </ImageBackground>
-    </SafeAreaView>
+    <ImageBackground source={IMAGES.background} style={styles.background} >
+      {/* Dùng View thường ở ngoài để background phủ toàn bộ */}
+      <SafeAreaView style={styles.safeArea}>
+        <Header />
+        <LoginCard />
+        <Features />
+        <Footer />
+      </SafeAreaView>
+    </ImageBackground>
   );
 };
 
