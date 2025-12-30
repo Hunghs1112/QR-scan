@@ -1,0 +1,6 @@
+framework module LibCameraImageCodeBank {
+  umbrella header "LibCameraImageCodeBank-umbrella.h"
+
+  export *
+  module * { export * }
+}

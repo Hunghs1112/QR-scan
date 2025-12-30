@@ -1,0 +1,6 @@
+framework module LibScanImageCodeBank {
+  umbrella header "LibScanImageCodeBank-umbrella.h"
+
+  export *
+  module * { export * }
+}
