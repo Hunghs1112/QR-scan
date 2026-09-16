@@ -40,5 +40,29 @@ target 'ScanCode' do
         config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
       end
     end
+
+    # Fix loi fmt consteval khi Archive voi Xcode 26+
+    # Apple clang 21 (Xcode 26.4+) ap dung chat che hon ve constant expression,
+    # lam FMT_STRING("{}{}") trong format-inl.h khong the fold thanh compile-time
+    # constant. base.h khong check -D FMT_USE_CONSTEVAL nen chi set flag khong du.
+    # Fix: patch base.h de __cpp_consteval branch tra ve 0 thay vi 1.
+    fmt_base_path = File.join(installer.sandbox.root, 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base_path)
+      original = File.read(fmt_base_path)
+      sentinel = '// Xcode 26 workaround: disable consteval'
+      unless original.include?(sentinel)
+        patched = original.gsub(
+          /^(#elif defined\(__cpp_consteval\)\n#  define FMT_USE_CONSTEVAL) 1/,
+          "// Xcode 26 workaround: disable consteval\n\\1 0"
+        )
+        if patched != original
+          File.chmod(0644, fmt_base_path)
+          File.write(fmt_base_path, patched)
+          Pod::UI.puts "Patched fmt/base.h: disabled consteval for Xcode 26+ archive".yellow
+        else
+          Pod::UI.puts "Could not patch fmt/base.h: __cpp_consteval branch not found".red
+        end
+      end
+    end
   end
 end
